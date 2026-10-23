@@ -116,6 +116,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** The shelf's width in pixels, worked out once from the screen. */
     private int heroMaxWidth, heroNameMaxWidth;
     private View heroShelf;
+    private NowPlaying nowPlaying;
     private TextView heroName;
     private TextView heroDesc;
     private TextView heroWhere;
@@ -312,6 +313,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroName = findViewById(R.id.heroName);
         heroDesc = findViewById(R.id.heroDesc);
         heroWhere = findViewById(R.id.heroWhere);
+        // Now Playing sits at the top of the shelf: Down goes back to the dock, Up on to the top bar.
+        nowPlaying = new NowPlaying(this, (LinearLayout) heroShelf, () -> focusTile(lastFocused % COLUMNS), this::focusTopBar);
         // A share of the space between the side paddings, so the description wraps into a column
         // rather than running the width of the screen. The name is one line, allowed a wider share.
         int usable = getResources().getDisplayMetrics().widthPixels - (int) ((55 + 56) * density);
@@ -762,6 +765,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onStop() {
         hiddenSinceResume = true;
+        nowPlaying.stop();
         handler.removeCallbacks(cacheClean);
         super.onStop();
     }
@@ -783,6 +787,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         updateInputsButton();
         updatePrayerTimes();
         updateHomeWeather();
+        nowPlaying.start();
         startWallpaperRotation();
         handler.postDelayed(minuteTick, MINUTE_MS);
         handler.removeCallbacks(cacheClean);
@@ -1076,6 +1081,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         // The glider replaces the glass selection outright.
         glass.setVisibility(View.GONE);
+    }
+
+    /** Up from Now Playing: the weather line when it is there, else the first top button. */
+    private void focusTopBar() {
+        if (homeWeather != null && homeWeather.getVisibility() == View.VISIBLE) {
+            homeWeather.requestFocus();
+            return;
+        }
+        for (int id : new int[]{R.id.btnWallpaper, R.id.btnInputs, R.id.btnWifi, R.id.btnSettings}) {
+            View b = findViewById(id);
+            if (b.getVisibility() == View.VISIBLE) {
+                b.requestFocus();
+                return;
+            }
+        }
     }
 
     private boolean isTopPill(View v) {
@@ -1833,7 +1853,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return position % COLUMNS == COLUMNS - 1 || position == count - 1;
         }
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-            if (position < COLUMNS) return false;          // dock row: let focus move to the top bar
+            if (position < COLUMNS) {
+                // Dock row: onto Now Playing when music is on, else let focus move to the top bar.
+                if (nowPlaying.isShown() && heroShown) {
+                    nowPlaying.focus();
+                    return true;
+                }
+                return false;
+            }
             target = position - COLUMNS;
         } else {
             int lastRowStart = ((count - 1) / COLUMNS) * COLUMNS;

@@ -113,11 +113,12 @@ input keyevent KEYCODE_HOME"
   fi
 }
 trap 'st=$?; [ $st -ne 0 ] && rollback; exit $st' EXIT
-# Glass TV in front, and the same process a few seconds later (not crashing and restarting).
+# Glass TV in front, and the same process a few seconds later (not crashing and restarting). "displays" only:
+# a plain "dumpsys window" starts with the window focused at the last ANR, which may be another app.
 healthy() {
   [ "${SAFEGUARD_TEST:-}" = "$1" ] && return 1
   local s p1 p2 f
-  s=$("$PY" -I ../tools/tv.py 'sleep 4; a=$(pidof com.gathin.tvhome); sleep 3; b=$(pidof com.gathin.tvhome); f=$(dumpsys window 2>/dev/null | grep -m1 mCurrentFocus); echo "$a|$b|$f"' | tail -n 1 | tr -d '\r') || return 1
+  s=$("$PY" -I ../tools/tv.py 'sleep 4; a=$(pidof com.gathin.tvhome); sleep 3; b=$(pidof com.gathin.tvhome); f=$(dumpsys window displays 2>/dev/null | grep -m1 mCurrentFocus); echo "$a|$b|$f"' | tail -n 1 | tr -d '\r') || return 1
   p1=${s%%|*}; s=${s#*|}; p2=${s%%|*}; f=${s#*|}
   [ -n "$p1" ] && [ "$p1" = "$p2" ] && case "$f" in *com.gathin.tvhome*) return 0 ;; *) return 1 ;; esac
 }

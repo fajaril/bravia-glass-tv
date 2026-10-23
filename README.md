@@ -16,6 +16,7 @@ Tested on a Sony BRAVIA VU3 (KD-65X75K), Google TV / Android TV 14, over Etherne
 | | |
 |---|---|
 | ![Home](showcase/02-after-glass-tv-home.jpg) | ![Weather and API](showcase/03-weather-and-API-under-the-clock.jpg) |
+| ![Now Playing](showcase/40-now-playing-on-home.jpg) | |
 | ![Daily ayat](showcase/09-daily-ayat-malay.jpg) | ![Tiles](showcase/23-restyled-tiles-1.jpg) |
 
 - **Waktu Solat**: today's prayer times from JAKIM e-Solat (zone `MLK01`), with the next prayer
@@ -27,6 +28,8 @@ Tested on a Sony BRAVIA VU3 (KD-65X75K), Google TV / Android TV 14, over Etherne
 - **Wallpapers**: Bing (a rolling 60-day pool from the US, UK, Canada, Australia and India editions),
   Wikimedia Picture of the Day, Nature & Wildlife, NASA Image of the Day, Smithsonian Open Access art, and
   Unsplash (your own key, typed on the TV). It also lets you set how often the wallpaper changes, the text size and the place info.
+- **Now Playing**: while Spotify or another music app plays (or is paused), a small card above the place
+  name shows the song and cover with previous / play-pause / next; Up from the dock reaches it.
 - **Round top buttons** that expand with their name when selected.
 - **App menu** (hold OK on an app): Move, Update, tvOS-style or the app's own tile, Hide from Home,
   App info, Hidden apps.
