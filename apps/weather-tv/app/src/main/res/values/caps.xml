@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Small spaced capitals for section titles, as on the Glass TV home screen. -->
+    <style name="Caps">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">#CCFFFFFF</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:fontFamily">@font/outfit</item>
+        <item name="android:fontVariationSettings">\'wght\' 500</item>
+        <item name="android:letterSpacing">0.18</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:singleLine">true</item>
+    </style>
+</resources>
