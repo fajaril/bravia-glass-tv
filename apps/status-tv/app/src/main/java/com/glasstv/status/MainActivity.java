@@ -100,7 +100,7 @@ public class MainActivity extends Activity {
         tabApps = tab("Apps");
         tabNetwork = tab("Network");
         head.addView(tabOverview);
-        for (TextView t : new TextView[]{tabApps, tabNetwork}) {
+        for (TextView t : new TextView[]{tabNetwork, tabApps}) {
             LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             tlp.leftMargin = dp(10);
             head.addView(t, tlp);
@@ -151,15 +151,6 @@ public class MainActivity extends Activity {
         freeButton.setBackground(buttonBackground());
         freeButton.setOnClickListener(v -> freeMemory());
         row.addView(freeButton);
-        restartButton = text("Restart TV", 18, 0xFF000000, 600);
-        restartButton.setPadding(dp(26), dp(12), dp(26), dp(12));
-        restartButton.setFocusable(true);
-        restartButton.setClickable(true);
-        restartButton.setBackground(buttonBackground());
-        restartButton.setOnClickListener(v -> restartTv());
-        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        rlp.leftMargin = dp(12);
-        row.addView(restartButton, rlp);
         freeNote = text(FREE_NOTE, 14, MUTE, 400);
         freeNote.setPadding(dp(18), 0, 0, 0);
         row.addView(freeNote, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
@@ -175,16 +166,40 @@ public class MainActivity extends Activity {
         infoValues = text("", 15, 0xE6FFFFFF, 400);
         infoValues.setLineSpacing(dp(6), 1f);
         box.addView(info, new LinearLayout.LayoutParams(dp(120), ViewGroup.LayoutParams.WRAP_CONTENT));
-        box.addView(infoValues);
+        box.addView(infoValues, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        // Restart TV: small and out of the way, at the foot of the box beside "On for".
+        restartButton = text("Restart TV", 14, 0xD9FFFFFF, 500);
+        restartButton.setPadding(dp(16), dp(7), dp(16), dp(7));
+        restartButton.setFocusable(true);
+        restartButton.setClickable(true);
+        restartButton.setTextColor(new android.content.res.ColorStateList(
+                new int[][]{{android.R.attr.state_focused}, {}}, new int[]{0xFF000000, 0xD9FFFFFF}));
+        GradientDrawable chipOn = new GradientDrawable();
+        chipOn.setColor(0xFFFFFFFF);
+        chipOn.setCornerRadius(dp(16));
+        GradientDrawable chipOff = new GradientDrawable();
+        chipOff.setColor(0x14FFFFFF);
+        chipOff.setCornerRadius(dp(16));
+        chipOff.setStroke(Math.max(1, dp(1)), 0x40FFFFFF);
+        android.graphics.drawable.StateListDrawable chip = new android.graphics.drawable.StateListDrawable();
+        chip.addState(new int[]{android.R.attr.state_focused}, chipOn);
+        chip.addState(new int[]{}, chipOff);
+        restartButton.setBackground(chip);
+        restartButton.setOnClickListener(v -> restartTv());
+        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        rlp.gravity = Gravity.BOTTOM;
+        box.addView(restartButton, rlp);
         LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         ilp.topMargin = dp(22);
         overview.addView(box, ilp);
 
         // Up from a page reaches the tabs; selecting a tab shows its page, Down goes back into it.
-        for (View v : new View[]{freeButton, networkPage.button, appsPage.refresh, tabOverview, tabApps, tabNetwork}) {
+        for (View v : new View[]{freeButton, restartButton, networkPage.button, appsPage.refresh, tabOverview, tabApps, tabNetwork}) {
             v.setId(View.generateViewId());
         }
         freeButton.setNextFocusUpId(tabOverview.getId());
+        freeButton.setNextFocusDownId(restartButton.getId());
+        restartButton.setNextFocusUpId(freeButton.getId());
         networkPage.button.setNextFocusUpId(tabNetwork.getId());
         appsPage.refresh.setNextFocusUpId(tabApps.getId());
         tabOverview.setNextFocusDownId(freeButton.getId());
@@ -202,7 +217,7 @@ public class MainActivity extends Activity {
         freeButton.requestFocus();
     }
 
-    /** Shows tab {@code i} (0 Overview, 1 Apps, 2 Network); Apps and Network start their check the first time. */
+    /** Shows tab {@code i} (0 Overview, 1 Apps, 2 Network; the tabs show Overview, Network, Apps); Apps and Network start their check the first time. */
     private void show(int i) {
         overviewPage.setVisibility(i == 0 ? View.VISIBLE : View.GONE);
         appsPage.setVisibility(i == 1 ? View.VISIBLE : View.GONE);
@@ -320,7 +335,7 @@ public class MainActivity extends Activity {
     private void restartTv() {
         if (!restartArmed) {
             restartArmed = true;
-            restartButton.setText("Press OK again to restart");
+            restartButton.setText("Press OK again to restart the TV");
             freeNote.setText("The TV turns off and on again (about a minute). Anything playing stops.");
             handler.postDelayed(disarm, 5000);
             return;
