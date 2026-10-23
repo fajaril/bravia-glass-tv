@@ -153,7 +153,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         TVOS.put("com.glasstv.weather", new int[]{0xFF6CC6FF, 0xFF2A8CF0, 0xFF1259C9, 0});
         TVOS.put("com.glasstv.quotes", new int[]{0xFFA77BE0, 0xFF6E44B0, 0xFF422474, 0xFFFFC98A});
         TVOS.put("com.glasstv.doa", new int[]{0xFF3FD3C2, 0xFF138F86, 0xFF075550, 0xFFFFFFFF});
-        TVOS.put("com.glasstv.mathurat", new int[]{0xFFFFB86B, 0xFFE0705A, 0xFF7A3E8C, 0xFFFFFFFF});
+        TVOS.put("com.glasstv.mathurat", new int[]{0xFFF5A25E, 0xFFD95F5F, 0xFF6E3A8A, 0xFFFFFFFF});
         // Google's apps: their own logo, in its own colours, on a white tile.
         TVOS.put("com.android.vending", new int[]{0xFFFFFFFF, 0xFFF7F7F9, 0xFFE9E9EE, 0});
         TVOS.put("com.google.android.videos", new int[]{0xFFFFFFFF, 0xFFF7F7F9, 0xFFE9E9EE, 0});
