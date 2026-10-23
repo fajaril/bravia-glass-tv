@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The eight-pointed star (Rub el Hizb) as outlines, for the Quran tile. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.5" android:strokeLineJoin="round"
+        android:pathData="M5.2,5.2H18.8V18.8H5.2z" />
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.5" android:strokeLineJoin="round"
+        android:pathData="M12,2.4L21.6,12 12,21.6 2.4,12z" />
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.5"
+        android:pathData="M12,8.2a3.8,3.8 0,1 0,0.001 0z" />
+</vector>

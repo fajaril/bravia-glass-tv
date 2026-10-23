@@ -100,7 +100,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private static final float HERO_WIDTH_SHARE = 0.40f;
     /** The name is one line, and may run wider than the description, up to this share. */
     private static final float HERO_NAME_WIDTH_SHARE = 0.60f;
+    /** The shelf's sizes at full scale; the owner's Text size choice scales all of them together. */
     private static final float HERO_TITLE_MAX_SP = 40f;
+    private static final float HERO_WHERE_SP = 16f, HERO_DESC_SP = 14f;
+    /** Extra small, Small, Medium (the default) and Large, from the Wallpaper menu's Text size row. */
+    private static final float[] SHELF_SCALES = {0.5f, 0.65f, 0.8f, 1f};
+    private static final int SHELF_DEFAULT = 2;
+    private float shelfScale = 0.8f;
+    /** What the shelf shows, from the Wallpaper menu's Place info row: everything, the name only, or nothing. */
+    private static final int SHELF_ALL = 0, SHELF_NAME_ONLY = 1, SHELF_HIDDEN = 2;
+    private int shelfMode = SHELF_ALL;
     /** The breathing room between the shelf's last line and the top of the app container. */
     private static final float HERO_GAP_DP = 67f;
     private static final float HERO_TITLE_MIN_SP = 26f;
@@ -125,7 +134,28 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private Bitmap ambientShape;
     /** Where the shelf's bottom edge belongs; its top follows once the lines have been measured. */
     private float heroBottom;
+    /** The weather line under the clock; null when weather_lat / weather_lon are not set. */
+    private TextView homeWeather;
+    private boolean homeWeatherRunning;
+    /** Prayer times across from the shelf (prayer_zone); null when the zone is not set. */
+    private View prayerPanel;
+    private TextView prayerHeader;
+    private final TextView[] prayerNames = new TextView[PrayerTimes.NAMES.length];
+    private final TextView[] prayerClock = new TextView[PrayerTimes.NAMES.length];
+    private String prayerZone = "";
+    private boolean prayerRefreshRunning;
+    /** The daily ayat above the prayer times; null when weekly_ayah is off. */
+    private View ayahBlock;
+    private boolean ayahRunning;
+    private long prayerLastTry;
+    /** Shares of the usable width the shelf keeps when the prayer panel is beside it. */
+    private static final float HERO_NAME_SHARE_WITH_PRAYER = 0.42f;
+    private static final long PRAYER_RETRY_MS = 30 * 60_000L;
     private View btnInputs;
+    /** Picks where the pictures of places come from; shown only while places are on. */
+    private View btnWallpaper;
+    /** Set when the owner picked a source, so the outcome of that fetch is said out loud. */
+    private String wallpaperAsked;
     private TextView btnWifi;
     private TextView shamsiDate;
     private boolean shamsi;
@@ -154,6 +184,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean tilesAnimatedOnce;
     /** Grid rows left showing under the dock (config rows_below_dock). */
     private int rowsBelowDockSetting;
+    /** Space under the dock row, in dp (config dock_bottom_dp, 30 by default). */
+    private int dockBottomDp = 30;
     /** The longest Home holds its first frame while it puts itself together (see holdFirstFrame). */
     private static final long FIRST_FRAME_WAIT_MS = 1200;
     private static final long RETURN_SETTLE_MS = 6000;
@@ -171,6 +203,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** Rotating wallpaper (Config.wallpapers), the view that shows it and the bitmap on screen. */
     private List<File> wallpapers = Collections.emptyList();
     private long wallpaperIntervalMs;
+    /** The speeds the Wallpaper menu steps through; the choice is kept and wins over the theme's. */
+    private static final long[] WALL_SPEEDS = {15_000L, 60_000L, 5 * 60_000L, 30 * 60_000L};
     /** Decodes the next picture off the main thread, so a switch never stutters the D-pad animations. */
     private final java.util.concurrent.ExecutorService wallDecoder = java.util.concurrent.Executors.newSingleThreadExecutor();
     private long wallShownAt;
@@ -233,6 +267,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             updateShamsiDate();
             updateWifiLabel();
             refreshPlacesIfDue();
+            updatePrayerTimes();
+            updateHomeWeather();
             handler.postDelayed(this, MINUTE_MS);
         }
     };
@@ -262,7 +298,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         root.setBackgroundColor(cfg.backgroundColor);
         config = cfg;
         wallpapers = cfg.wallpapers;
-        wallpaperIntervalMs = cfg.wallpaperIntervalMs;
+        wallpaperIntervalMs = getSharedPreferences("launch", MODE_PRIVATE).getLong("wall_interval_ms", cfg.wallpaperIntervalMs);
         placesMode = cfg.places;
         // Places only, when they are on: never the theme's own pictures, even before the first
         // week's places have arrived.
@@ -283,12 +319,62 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroNameMaxWidth = Math.round(usable * HERO_NAME_WIDTH_SHARE);
         heroName.setMaxWidth(heroNameMaxWidth);
         heroDesc.setMaxWidth(heroMaxWidth);
+        android.content.SharedPreferences shelfPrefs = getSharedPreferences("launch", MODE_PRIVATE);
+        int savedScale = shelfPrefs.getInt("shelf_size", SHELF_DEFAULT);
+        shelfScale = SHELF_SCALES[Math.max(0, Math.min(SHELF_SCALES.length - 1, savedScale))];
+        shelfMode = Math.max(SHELF_ALL, Math.min(SHELF_HIDDEN, shelfPrefs.getInt("shelf_mode", SHELF_ALL)));
+        applyShelfScale();
         // The shelf grows and shrinks with the name and the description, so it hangs from its
         // bottom edge: every time it is measured, its top is worked out again. Positioning it by
         // the height it happened to have beforehand is what let a tall block run into the dock.
         heroShelf.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, orr, ob) -> {
             if (heroBottom > 0) v.setY(heroBottom - v.getHeight());
         });
+        prayerZone = cfg.prayerZone;
+        if (!prayerZone.isEmpty()) setUpPrayerPanel(usable);
+        if (!Double.isNaN(cfg.weatherLat) && !Double.isNaN(cfg.weatherLon)) {
+            homeWeather = findViewById(R.id.homeWeather);
+            homeWeather.setVisibility(View.VISIBLE);
+            // OK on the weather line opens the Weather app; the selection glides onto it like a top button.
+            homeWeather.setOnClickListener(v -> {
+                Intent w = getPackageManager().getLeanbackLaunchIntentForPackage("com.glasstv.weather");
+                if (w == null) w = getPackageManager().getLaunchIntentForPackage("com.glasstv.weather");
+                // Always the home page (Melaka), not whatever page the app was left on.
+                if (w != null) open(w.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK));
+            });
+            homeWeather.setOnFocusChangeListener((v, has) -> {
+                if (has) moveTopHighlight(v);
+            });
+            homeWeather.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    for (int id : new int[]{R.id.btnWallpaper, R.id.btnInputs, R.id.btnWifi, R.id.btnSettings}) {
+                        View b = findViewById(id);
+                        if (b.getVisibility() == View.VISIBLE) {
+                            b.requestFocus();
+                            break;
+                        }
+                    }
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    focusTile(lastFocused % COLUMNS);
+                    return true;
+                }
+                return keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode == KeyEvent.KEYCODE_DPAD_LEFT;
+            });
+            showHomeWeather(HomeWeather.last(this));
+            // The top buttons line up with the clock, as before: lift them by the line under it.
+            View buttons = findViewById(R.id.topButtons);
+            homeWeather.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, orr, ob) -> {
+                ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) buttons.getLayoutParams();
+                int want = (int) (6 * density) + v.getHeight() + ((ViewGroup.MarginLayoutParams) v.getLayoutParams()).topMargin;
+                if (lp.bottomMargin != want) {
+                    lp.bottomMargin = want;
+                    buttons.setLayoutParams(lp);
+                }
+            });
+        }
         btnWifi = findViewById(R.id.btnWifi);
         if (!cfg.showNetworkPill) btnWifi.setVisibility(View.GONE);
         shamsiDate = findViewById(R.id.shamsiDate);
@@ -346,13 +432,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         // The grid only shows the shape on the tray.
         glider.addCompanion(grid, tray.area);
-        for (int id : new int[]{R.id.btnInputs, R.id.btnWifi, R.id.btnSettings}) {
+        for (int id : new int[]{R.id.btnWallpaper, R.id.btnInputs, R.id.btnWifi, R.id.btnSettings}) {
             View pill = findViewById(id);
             pill.setBackground(new GlassDrawable(pill, 21 * density, density, glider));
             glider.addCompanion(pill);
             Backdrop.watch(pill);
+            // Round icon buttons that open into a named pill while selected; the highlight follows
+            // once the wider pill is laid out.
             pill.setOnFocusChangeListener((v, has) -> {
-                if (has) moveTopHighlight(v);
+                setPillOpen((TextView) v, has);
+                if (has) afterLayout(v, () -> {
+                    if (v.hasFocus()) moveTopHighlight(v);
+                });
             });
         }
         // The apps rise into place on the first launch after the TV starts, and only then. Setting
@@ -371,6 +462,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // tvOS layout: push the dock row towards the bottom of the screen, leaving room for
         // rows_below_dock grid rows under it; the rest of the grid stays below until you press Down.
         rowsBelowDockSetting = cfg.rowsBelowDock;
+        dockBottomDp = cfg.dockBottomDp;
         grid.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
             parkDock();
             updateTopFade();
@@ -419,6 +511,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
 
         btnInputs = findViewById(R.id.btnInputs);
+        btnWallpaper = findViewById(R.id.btnWallpaper);
+        btnWallpaper.setVisibility(placesMode ? View.VISIBLE : View.GONE);
+        btnWallpaper.setOnClickListener(v -> showWallpaperSources());
         View btnSettings = findViewById(R.id.btnSettings);
         btnInputs.setOnClickListener(v -> showInputs());
         btnWifi.setOnClickListener(v -> openNetworkPill());
@@ -444,7 +539,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 return true;
             }
             if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-                // The left end is Inputs, or Wi-Fi on a box without inputs, or Settings when both are gone.
+                // The left end is Wallpaper, else Inputs, or Wi-Fi on a box without inputs, or Settings when both are gone.
+                // Left of the first button: the weather line, when it is there.
+                boolean first = btnWallpaper.getVisibility() == View.VISIBLE ? v.getId() == R.id.btnWallpaper
+                        : v.getId() == R.id.btnInputs;
+                if (first && homeWeather != null && homeWeather.getVisibility() == View.VISIBLE) {
+                    homeWeather.requestFocus();
+                    return true;
+                }
+                if (btnWallpaper.getVisibility() == View.VISIBLE) return v.getId() == R.id.btnWallpaper;
                 return v.getId() == R.id.btnInputs
                         || (v.getId() == R.id.btnWifi && btnInputs.getVisibility() != View.VISIBLE)
                         || (v.getId() == R.id.btnSettings && btnInputs.getVisibility() != View.VISIBLE
@@ -453,6 +556,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && v.getId() == R.id.btnSettings;
         };
         btnInputs.setOnKeyListener(pillKeys);
+        btnWallpaper.setOnKeyListener(pillKeys);
         btnWifi.setOnKeyListener(pillKeys);
         btnSettings.setOnKeyListener(pillKeys);
 
@@ -598,6 +702,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             boolean changed = PlaceWallpapers.refresh(getApplicationContext());
             handler.post(() -> {
                 placesRefreshRunning = false;
+                if (wallpaperAsked != null) {
+                    if (!changed && !isDestroyed()) {
+                        Toast.makeText(this, getString(R.string.wallpaper_failed, wallpaperAsked), Toast.LENGTH_LONG).show();
+                    }
+                    wallpaperAsked = null;
+                }
                 if (!changed || isDestroyed()) return;
                 List<File> places = PlaceWallpapers.list(this);
                 if (places.isEmpty()) return;
@@ -671,6 +781,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         updateShamsiDate();
         updateWifiLabel();
         updateInputsButton();
+        updatePrayerTimes();
+        updateHomeWeather();
         startWallpaperRotation();
         handler.postDelayed(minuteTick, MINUTE_MS);
         handler.removeCallbacks(cacheClean);
@@ -693,6 +805,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             glider.hideNow();
             heroShown = false;
             heroShelf.setAlpha(0f);
+            if (prayerPanel != null) prayerPanel.setAlpha(0f);
             ambientShown = false;
             ambient.setAlpha(0f);
             syncGlassGlow();
@@ -882,6 +995,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         int color = adapter.ambientColorAt(position);
         heroBottom = dockTopInRoot - HERO_GAP_DP * density;
         float y = heroBottom - heroShelf.getHeight();
+        showPrayerPanel();
         boolean changed = !label.contentEquals(heroName.getText());
 
         if (reducedMotion) {
@@ -966,7 +1080,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private boolean isTopPill(View v) {
         int id = v.getId();
-        return id == R.id.btnInputs || id == R.id.btnWifi || id == R.id.btnSettings;
+        return id == R.id.btnWallpaper || id == R.id.btnInputs || id == R.id.btnWifi || id == R.id.btnSettings
+                || id == R.id.homeWeather;
     }
 
     /** Sends the focus shape onto a pill: from a tile it glides up and narrows into the pill. */
@@ -984,20 +1099,35 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     /** The shelf's two lines. An empty description takes no room, so the title keeps its place. */
+    /** Sizes the country line and description for the chosen scale, and redraws the shelf in it. */
+    private void applyShelfScale() {
+        heroWhere.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, HERO_WHERE_SP * shelfScale);
+        heroDesc.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, HERO_DESC_SP * shelfScale);
+        heroDesc.setLineSpacing(2f * shelfScale * density, 1f);
+        ViewGroup.MarginLayoutParams whereLp = (ViewGroup.MarginLayoutParams) heroWhere.getLayoutParams();
+        whereLp.topMargin = Math.round(-1.5f * shelfScale * density);
+        heroWhere.setLayoutParams(whereLp);
+        CharSequence name = heroName.getText();
+        if (name != null && name.length() > 0) {
+            setHeroText(name.toString(), String.valueOf(heroWhere.getText()), String.valueOf(heroDesc.getText()));
+        }
+    }
+
     private void setHeroText(String title, String where, String desc) {
         heroName.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, titleSizeSp(title));
         heroName.setText(title);
+        heroName.setVisibility(shelfMode == SHELF_HIDDEN ? View.GONE : View.VISIBLE);
         heroWhere.setText(where);
-        heroWhere.setVisibility(where.isEmpty() ? View.GONE : View.VISIBLE);
+        heroWhere.setVisibility(where.isEmpty() || shelfMode == SHELF_HIDDEN ? View.GONE : View.VISIBLE);
         // The description sits further down under a country line; with none, close under the name.
         ViewGroup.MarginLayoutParams descLp = (ViewGroup.MarginLayoutParams) heroDesc.getLayoutParams();
-        int top = Math.round((where.isEmpty() ? 6f : 9.5f) * density);
+        int top = Math.round((where.isEmpty() ? 6f : 9.5f) * shelfScale * density);
         if (descLp.topMargin != top) {
             descLp.topMargin = top;
             heroDesc.setLayoutParams(descLp);
         }
         heroDesc.setText(desc);
-        heroDesc.setVisibility(desc.isEmpty() ? View.GONE : View.VISIBLE);
+        heroDesc.setVisibility(desc.isEmpty() || shelfMode != SHELF_ALL ? View.GONE : View.VISIBLE);
     }
 
     /**
@@ -1027,14 +1157,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      * viewer nothing, so a long one is set smaller rather than clipped.
      */
     private float titleSizeSp(String title) {
-        if (title == null || title.isEmpty() || heroNameMaxWidth <= 0) return HERO_TITLE_MAX_SP;
+        float max = HERO_TITLE_MAX_SP * shelfScale, min = HERO_TITLE_MIN_SP * shelfScale;
+        if (title == null || title.isEmpty() || heroNameMaxWidth <= 0) return max;
         android.text.TextPaint paint = new android.text.TextPaint(heroName.getPaint());
         float scaled = getResources().getDisplayMetrics().scaledDensity;
-        for (float sp = HERO_TITLE_MAX_SP; sp > HERO_TITLE_MIN_SP; sp -= 2f) {
+        for (float sp = max; sp > min; sp -= 2f * shelfScale) {
             paint.setTextSize(sp * scaled);
             if (paint.measureText(title) <= heroNameMaxWidth) return sp;
         }
-        return HERO_TITLE_MIN_SP;
+        return min;
     }
 
     /**
@@ -1099,7 +1230,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         int inner = grid.getWidth() - grid.getPaddingLeft() - grid.getPaddingRight();
         int itemH = AppAdapter.itemHeightPx(AppAdapter.tileHeightPx(AppAdapter.tileWidthPx(inner, COLUMNS, density)), density);
         int dockRow = itemH + (int) ((6 + 12) * density);   // item height plus DockDecoration offsets
-        int want = Math.max(0, h - dockRow - itemH * rowsBelowDockSetting - (int) (30 * density));
+        int want = Math.max(0, h - dockRow - itemH * rowsBelowDockSetting - (int) (dockBottomDp * density));
         if (grid.getPaddingTop() == want) return true;
         grid.setPadding(grid.getPaddingLeft(), want, grid.getPaddingRight(), grid.getPaddingBottom());
         return false;
@@ -1224,6 +1355,207 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (!heroShown) return;
         heroShown = false;
         heroShelf.animate().alpha(0f).setDuration(reducedMotion ? 100 : 160).start();
+        if (prayerPanel != null) prayerPanel.animate().alpha(0f).setDuration(reducedMotion ? 100 : 160).start();
+    }
+
+    // ---- prayer times ----------------------------------------------------------------------------
+
+    /** Builds the six columns and makes room for them beside the shelf. */
+    private void setUpPrayerPanel(int usable) {
+        prayerPanel = findViewById(R.id.prayerPanel);
+        prayerHeader = findViewById(R.id.prayerHeader);
+        LinearLayout row = findViewById(R.id.prayerRow);
+        android.graphics.Typeface outfit = prayerHeader.getTypeface();
+        for (int i = 0; i < PrayerTimes.NAMES.length; i++) {
+            LinearLayout col = new LinearLayout(this);
+            col.setOrientation(LinearLayout.VERTICAL);
+            col.setGravity(Gravity.CENTER_HORIZONTAL);
+            TextView name = new TextView(this);
+            name.setTypeface(outfit);
+            name.setText(PrayerTimes.NAMES[i]);
+            name.setAllCaps(true);
+            name.setTextSize(11f);
+            name.setLetterSpacing(0.1f);
+            name.setIncludeFontPadding(false);
+            name.setSingleLine(true);
+            TextView time = new TextView(this);
+            time.setTypeface(outfit);
+            time.setTextSize(22f);
+            time.setLetterSpacing(-0.02f);
+            time.setIncludeFontPadding(false);
+            time.setSingleLine(true);
+            time.setPadding(0, (int) (6 * density), 0, 0);
+            col.addView(name);
+            col.addView(time);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            if (i > 0) lp.leftMargin = (int) (18 * density);
+            row.addView(col, lp);
+            prayerNames[i] = name;
+            prayerClock[i] = time;
+        }
+        if (config.weeklyAyah) {
+            ayahBlock = findViewById(R.id.ayahBlock);
+            showAyah(WeeklyAyah.last(this));
+        }
+        // The place's name gives up width so the two never meet.
+        heroNameMaxWidth = Math.round(usable * HERO_NAME_SHARE_WITH_PRAYER);
+        heroName.setMaxWidth(heroNameMaxWidth);
+        prayerPanel.setVisibility(View.VISIBLE);
+        // Like the shelf, it hangs from its bottom edge, on the shelf's line.
+        prayerPanel.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, orr, ob) -> {
+            if (heroBottom > 0) v.setY(heroBottom - v.getHeight());
+        });
+    }
+
+    /** Fades the panel in with the shelf, on the same line. */
+    private void showPrayerPanel() {
+        if (prayerPanel == null || prayerHeader.getText().length() == 0) return;
+        prayerPanel.setY(heroBottom - prayerPanel.getHeight());
+        if (prayerPanel.getAlpha() >= 1f) return;
+        prayerPanel.animate().cancel();
+        if (reducedMotion || firstFrameHeld || resuming) prayerPanel.setAlpha(1f);
+        else prayerPanel.animate().alpha(1f).setDuration(260).start();
+    }
+
+    /** Fetches today's ayat when the one kept is from an earlier day. */
+    private void updateAyah() {
+        if (ayahBlock == null || ayahRunning || WeeklyAyah.stored(this) != null) return;
+        ayahRunning = true;
+        new Thread(() -> {
+            WeeklyAyah.Ayah a = WeeklyAyah.refresh(getApplicationContext());
+            handler.post(() -> {
+                ayahRunning = false;
+                if (a != null && !isDestroyed()) showAyah(a);
+            });
+        }, "weekly-ayah").start();
+    }
+
+    private void showAyah(WeeklyAyah.Ayah a) {
+        if (ayahBlock == null || a == null || a.arabic.isEmpty()) return;
+        ((TextView) findViewById(R.id.ayahLabel)).setText(a.reference);
+        ((TextView) findViewById(R.id.ayahArabic)).setText(a.arabic);
+        TextView tr = findViewById(R.id.ayahText);
+        String text = a.translation(WeeklyAyah.english(this));
+        tr.setText(text);
+        tr.setVisibility(text.isEmpty() ? View.GONE : View.VISIBLE);
+        ayahBlock.setVisibility(View.VISIBLE);
+    }
+
+    /** Today's times from the stored month, the next prayer lit; fetches the month when it lacks today. */
+    private void updatePrayerTimes() {
+        if (prayerPanel == null) return;
+        updateAyah();
+        java.util.Calendar now = java.util.Calendar.getInstance();
+        PrayerTimes.Day day = PrayerTimes.day(this, prayerZone, now);
+        if (day == null) {
+            fetchPrayerTimes();
+            return;
+        }
+        boolean h24 = android.text.format.DateFormat.is24HourFormat(this);
+        int nowMin = now.get(java.util.Calendar.HOUR_OF_DAY) * 60 + now.get(java.util.Calendar.MINUTE);
+        // The next prayer, Syuruk aside; after Isyak, tomorrow's Subuh.
+        int next = 0;
+        for (int i = 0; i < day.minutes.length; i++) {
+            if (i != PrayerTimes.SYURUK && day.minutes[i] > nowMin) {
+                next = i;
+                break;
+            }
+        }
+        for (int i = 0; i < day.minutes.length; i++) {
+            int m = day.minutes[i], hour = m / 60;
+            if (!h24) hour = hour % 12 == 0 ? 12 : hour % 12;
+            prayerClock[i].setText(String.format(Locale.ROOT, h24 ? "%02d:%02d" : "%d:%02d", hour, m % 60));
+            boolean lit = i == next;
+            prayerNames[i].setTextColor(lit ? 0xFFFFC56B : 0x99FFFFFF);
+            prayerClock[i].setTextColor(lit ? 0xFFFFFFFF : 0xB3FFFFFF);
+            prayerClock[i].setFontVariationSettings(lit ? "'wght' 500" : "'wght' 300");
+            prayerNames[i].setFontVariationSettings("'wght' 500");
+        }
+        String hijri = PrayerTimes.hijriLabel(day.hijri);
+        boolean first = prayerHeader.getText().length() == 0;
+        prayerHeader.setText(hijri.isEmpty() ? "Waktu Solat" : "Waktu Solat  \u00B7  " + hijri);
+        if (first && heroShown) showPrayerPanel();
+    }
+
+    /** A top button as a 42dp circle with its icon, or, while selected, a pill with its name beside the icon. */
+    private void setPillOpen(TextView v, boolean open) {
+        ViewGroup.LayoutParams lp = v.getLayoutParams();
+        int width = open ? ViewGroup.LayoutParams.WRAP_CONTENT : (int) (42 * density);
+        if (lp.width != width) {
+            lp.width = width;
+            v.setLayoutParams(lp);
+        }
+        v.setText(open ? v.getContentDescription() : null);
+        v.setPaddingRelative((int) ((open ? 13.5f : 10f) * density), 0, open ? (int) (14 * density) : 0, 0);
+        v.setCompoundDrawablePadding(open ? (int) (7 * density) : 0);
+    }
+
+    /** Runs {@code r} once the view's next layout is done. */
+    private static void afterLayout(View v, Runnable r) {
+        v.getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
+            @Override
+            public boolean onPreDraw() {
+                v.getViewTreeObserver().removeOnPreDrawListener(this);
+                r.run();
+                return true;
+            }
+        });
+    }
+
+    /** Refreshes the weather line in the background every quarter hour. */
+    private void updateHomeWeather() {
+        if (homeWeather == null || homeWeatherRunning || !HomeWeather.due(this)) return;
+        homeWeatherRunning = true;
+        final double la = config.weatherLat, lo = config.weatherLon;
+        new Thread(() -> {
+            HomeWeather.Line line = HomeWeather.refresh(getApplicationContext(), la, lo);
+            handler.post(() -> {
+                homeWeatherRunning = false;
+                if (line != null && !isDestroyed()) showHomeWeather(line);
+            });
+        }, "home-weather").start();
+    }
+
+    /** "☁️ 29°  Partly cloudy   ·   API 98 Moderate", the API in its official colour. */
+    private void showHomeWeather(HomeWeather.Line line) {
+        if (homeWeather == null) return;
+        if (line == null) {
+            homeWeather.setText("");
+            return;
+        }
+        String sep = line.weather.isEmpty() || line.api.isEmpty() ? "" : "     ·     ";
+        SpannableString text = new SpannableString(line.weather + sep + line.api);
+        if (!line.api.isEmpty()) {
+            text.setSpan(new android.text.style.ForegroundColorSpan(line.apiColor), text.length() - line.api.length(),
+                    text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        homeWeather.setText(text);
+        if (line.icon != 0) {
+            android.graphics.drawable.Drawable d = getDrawable(line.icon);
+            int px = Math.round(20 * density);
+            d.setBounds(0, 0, px, px);
+            homeWeather.setCompoundDrawables(d, null, null, null);
+            homeWeather.setCompoundDrawablePadding(Math.round(8 * density));
+        } else {
+            homeWeather.setCompoundDrawables(null, null, null, null);
+        }
+    }
+
+    /** Fetches this month from JAKIM in the background; offline, tries again every half hour. */
+    private void fetchPrayerTimes() {
+        long t = android.os.SystemClock.elapsedRealtime();
+        if (prayerRefreshRunning || (prayerLastTry != 0 && t - prayerLastTry < PRAYER_RETRY_MS)) return;
+        prayerRefreshRunning = true;
+        prayerLastTry = t;
+        final String zone = prayerZone;
+        new Thread(() -> {
+            boolean ok = PrayerTimes.refresh(getApplicationContext(), zone);
+            handler.post(() -> {
+                prayerRefreshRunning = false;
+                if (ok && !isDestroyed()) updatePrayerTimes();
+            });
+        }, "prayer-times").start();
     }
 
     /**
@@ -1277,8 +1609,35 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 closeMenu(true);
             }, R.drawable.ic_move, getString(R.string.tile_move), -1, () -> startMove(key));
         }
+        final String pkg = adapter.packageAt(position);
+        final String label = adapter.labelAt(position);
+        // Update: the app's page in the Play Store, for apps it looks after (not the sideloaded ones).
+        if (pkg != null && fromPlayStore(pkg)) {
+            addInputRow(rows, () -> closeMenu(false), R.drawable.ic_system_update, getString(R.string.tile_update), -1,
+                    () -> openPlayStore(pkg));
+        }
+        if (pkg != null && adapter.canHide(position)) {
+            // Tile style: the app's own art, or a tvOS-style tile drawn from its icon.
+            final boolean tvos = adapter.tvosStyle(pkg);
+            addInputRow(rows, () -> closeMenu(false), R.drawable.ic_wallpaper,
+                    getString(tvos ? R.string.tile_style_original : R.string.tile_style_tvos), -1,
+                    () -> adapter.setTvosStyle(pkg, !tvos));
+            addInputRow(rows, () -> closeMenu(false), R.drawable.ic_visibility_off, getString(R.string.tile_hide), -1, () -> {
+                hiddenApps.add(pkg);
+                adapter.setHidden(pkg, true);
+                reloadApps(false);
+                Toast.makeText(this, getString(R.string.tile_hidden_toast, label), Toast.LENGTH_LONG).show();
+            });
+        }
         addInputRow(rows, () -> closeMenu(false), R.drawable.ic_info, getString(R.string.tile_app_info), -1,
                 () -> adapter.openAppInfo(adapter.positionOf(key)));
+        // The apps hidden so far, to show again: only when there are some.
+        int hiddenCount = adapter.userHidden().size();
+        if (hiddenCount > 0) {
+            addSeparator(rows);
+            addInputRow(rows, () -> closeMenu(false), R.drawable.ic_visibility,
+                    getString(R.string.tile_hidden_apps, hiddenCount), -1, () -> handler.post(this::showHiddenApps));
+        }
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         int width = Math.max((int) (190 * density), panel.getMeasuredWidth());
         // Under the app when there is room; over it in the dock, which sits near the bottom.
@@ -1288,6 +1647,70 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         int below = menuAt[1] - menuGliderAt[1] + card.getHeight() + (int) (18 * density) + panel.getMeasuredHeight();
         showMenu(panel, rows, card, width, below > root.getHeight() - (int) (24 * density));
         return true;
+    }
+
+    /** True when the Play Store looks after this app: it installed it, or the app came with the TV. */
+    private boolean fromPlayStore(String pkg) {
+        try {
+            android.content.pm.PackageManager pm = getPackageManager();
+            if (pm.getLeanbackLaunchIntentForPackage("com.android.vending") == null
+                    && pm.getLaunchIntentForPackage("com.android.vending") == null) return false;
+            String installer = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+                    ? pm.getInstallSourceInfo(pkg).getInstallingPackageName()
+                    : pm.getInstallerPackageName(pkg);
+            if ("com.android.vending".equals(installer)) return true;
+            return (pm.getApplicationInfo(pkg, 0).flags & ApplicationInfo.FLAG_SYSTEM) != 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** The app's page in the Play Store, which offers Update when there is one. */
+    private void openPlayStore(String pkg) {
+        Intent store = new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + pkg))
+                .setPackage("com.android.vending").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            startActivity(store);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, R.string.tile_no_store, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /** The hidden apps in a glass menu under the top bar: OK on one puts it back on Home. */
+    private void showHiddenApps() {
+        if (openMenu != null) return;
+        android.content.pm.PackageManager pm = getPackageManager();
+        List<String[]> named = new ArrayList<>();
+        for (String p : adapter.userHidden()) {
+            String name = p;
+            try {
+                name = String.valueOf(pm.getApplicationLabel(pm.getApplicationInfo(p, 0)));
+            } catch (Exception ignored) {
+            }
+            named.add(new String[]{name, p});
+        }
+        if (named.isEmpty()) return;
+        named.sort((a, b) -> a[0].compareToIgnoreCase(b[0]));
+        FrameLayout panel = (FrameLayout) getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
+        LinearLayout rows = panel.findViewById(R.id.rows);
+        for (String[] n : named) {
+            View row = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+            ((ImageView) row.findViewById(R.id.icon)).setImageResource(R.drawable.ic_visibility);
+            ((TextView) row.findViewById(R.id.title)).setText(n[0]);
+            ((TextView) row.findViewById(R.id.status)).setText(R.string.tile_show_again);
+            row.findViewById(R.id.dot).setVisibility(View.GONE);
+            row.setOnClickListener(v -> {
+                closeMenu(false);
+                hiddenApps.remove(n[1]);
+                adapter.setHidden(n[1], false);
+                reloadApps(false);
+                Toast.makeText(this, getString(R.string.tile_shown_toast, n[0]), Toast.LENGTH_SHORT).show();
+            });
+            rows.addView(row);
+        }
+        panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        int width = Math.max((int) (300 * density), panel.getMeasuredWidth());
+        showMenu(panel, rows, findViewById(R.id.btnSettings), width, false);
     }
 
     /** Picks the app up: it wiggles, the arrows carry it, and OK or Back puts it down. */
@@ -1521,6 +1944,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             btnWifi.setText(text);
         }
         btnWifi.setCompoundDrawablesRelativeWithIntrinsicBounds(icon, 0, 0, 0);
+        // A round icon button: the network's name is read out, not printed, and the icon dims offline.
+        btnWifi.setContentDescription(btnWifi.getText());
+        setPillOpen(btnWifi, btnWifi.hasFocus());
+        btnWifi.setAlpha(online ? 1f : 0.45f);
     }
 
     /** The network pill opens the VPN app when one is configured and installed, otherwise Wi-Fi settings. */
@@ -1700,6 +2127,201 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         width = Math.max(width, panel.getMeasuredWidth());
 
         showMenu(panel, rows, anchor, width, false);
+    }
+
+    /** The Wallpaper menu: one row per source, the one on screen marked; choosing another fetches it now. */
+    private void showWallpaperSources() {
+        if (openMenu != null) return;
+        FrameLayout panel = (FrameLayout) getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
+        LinearLayout rows = panel.findViewById(R.id.rows);
+        Runnable close = () -> closeMenu(false);
+        String chosen = PlaceWallpapers.source(this);
+        int[] names = {R.string.wallpaper_bing, R.string.wallpaper_wikimedia, R.string.wallpaper_wiki_nature,
+                R.string.wallpaper_nasa, R.string.wallpaper_smithsonian, R.string.wallpaper_unsplash};
+        for (int i = 0; i < PlaceWallpapers.SOURCES.length; i++) {
+            final String source = PlaceWallpapers.SOURCES[i];
+            final String label = getString(names[i]);
+            View row = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+            ((ImageView) row.findViewById(R.id.icon)).setImageResource(R.drawable.ic_wallpaper);
+            ((TextView) row.findViewById(R.id.title)).setText(label);
+            boolean on = source.equals(chosen);
+            // Unsplash is the owner's own account: without its key the row says so and stays put.
+            final boolean needsKey = PlaceWallpapers.UNSPLASH.equals(source) && PlaceWallpapers.unsplashKey(this, config).isEmpty();
+            ((TextView) row.findViewById(R.id.status)).setText(needsKey ? R.string.wallpaper_needs_key : R.string.wallpaper_showing);
+            row.findViewById(R.id.status).setVisibility(on || needsKey ? View.VISIBLE : View.GONE);
+            row.findViewById(R.id.dot).setVisibility(on && !needsKey ? View.VISIBLE : View.GONE);
+            row.setOnClickListener(v -> {
+                close.run();
+                if (needsKey) {
+                    showUnsplashKeyDialog();
+                    return;
+                }
+                if (source.equals(PlaceWallpapers.source(this)) && source.equals(PlaceWallpapers.fetchedSource(this))) return;
+                PlaceWallpapers.setSource(this, source);
+                wallpaperAsked = label;
+                Toast.makeText(this, getString(R.string.wallpaper_loading, label), Toast.LENGTH_SHORT).show();
+                refreshPlacesIfDue();
+            });
+            rows.addView(row);
+        }
+        // How often the picture changes: OK steps to the next speed, and the menu stays open to show it.
+        addSeparator(rows);
+        View speedRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+        ((ImageView) speedRow.findViewById(R.id.icon)).setImageResource(R.drawable.ic_timer);
+        ((TextView) speedRow.findViewById(R.id.title)).setText(R.string.wallpaper_every);
+        TextView speed = speedRow.findViewById(R.id.status);
+        speed.setText(speedLabel(wallpaperIntervalMs));
+        speedRow.findViewById(R.id.dot).setVisibility(View.GONE);
+        speedRow.setOnClickListener(v -> {
+            int next = 0;
+            for (int i = 0; i < WALL_SPEEDS.length; i++) if (WALL_SPEEDS[i] > wallpaperIntervalMs) { next = i; break; }
+            wallpaperIntervalMs = WALL_SPEEDS[next];
+            getSharedPreferences("launch", MODE_PRIVATE).edit().putLong("wall_interval_ms", wallpaperIntervalMs).apply();
+            speed.setText(speedLabel(wallpaperIntervalMs));
+            startWallpaperRotation();
+        });
+        rows.addView(speedRow);
+        // The place text and the ayat's language live one level down, so the menu fits on the screen.
+        View textRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+        ((ImageView) textRow.findViewById(R.id.icon)).setImageResource(R.drawable.ic_text_size);
+        ((TextView) textRow.findViewById(R.id.title)).setText(R.string.home_text);
+        ((TextView) textRow.findViewById(R.id.status)).setText("\u203A");
+        textRow.findViewById(R.id.dot).setVisibility(View.GONE);
+        textRow.setOnClickListener(v -> {
+            close.run();
+            handler.post(this::showTextOptions);
+        });
+        rows.addView(textRow);
+        // The key is typed here, on the TV, so no computer is needed to turn Unsplash on or change it.
+        View keyRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+        ((ImageView) keyRow.findViewById(R.id.icon)).setImageResource(R.drawable.ic_lock);
+        ((TextView) keyRow.findViewById(R.id.title)).setText(R.string.unsplash_key);
+        ((TextView) keyRow.findViewById(R.id.status)).setText(PlaceWallpapers.unsplashKey(this, config).isEmpty()
+                ? R.string.unsplash_key_not_set : R.string.unsplash_key_saved);
+        keyRow.findViewById(R.id.dot).setVisibility(View.GONE);
+        keyRow.setOnClickListener(v -> {
+            close.run();
+            showUnsplashKeyDialog();
+        });
+        rows.addView(keyRow);
+        panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        int width = Math.max(Math.max(btnWallpaper.getWidth(), (int) (150 * density)), panel.getMeasuredWidth());
+        showMenu(panel, rows, btnWallpaper, width, false);
+    }
+
+    /** Text size, Place info and the ayat's language, opened from the Wallpaper menu. */
+    private void showTextOptions() {
+        if (openMenu != null) return;
+        FrameLayout panel = (FrameLayout) getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
+        LinearLayout rows = panel.findViewById(R.id.rows);
+        // The size of the place's name, country and description: OK steps Small, Medium, Large.
+        View sizeRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+        ((ImageView) sizeRow.findViewById(R.id.icon)).setImageResource(R.drawable.ic_text_size);
+        ((TextView) sizeRow.findViewById(R.id.title)).setText(R.string.shelf_text_size);
+        TextView sizeName = sizeRow.findViewById(R.id.status);
+        int[] sizeNames = {R.string.shelf_extra_small, R.string.shelf_small, R.string.shelf_medium, R.string.shelf_large};
+        int at = SHELF_DEFAULT;
+        for (int i = 0; i < SHELF_SCALES.length; i++) if (SHELF_SCALES[i] == shelfScale) at = i;
+        sizeName.setText(sizeNames[at]);
+        sizeRow.findViewById(R.id.dot).setVisibility(View.GONE);
+        sizeRow.setOnClickListener(v -> {
+            int now = SHELF_DEFAULT;
+            for (int i = 0; i < SHELF_SCALES.length; i++) if (SHELF_SCALES[i] == shelfScale) now = i;
+            int next = (now + 1) % SHELF_SCALES.length;
+            shelfScale = SHELF_SCALES[next];
+            getSharedPreferences("launch", MODE_PRIVATE).edit().putInt("shelf_size", next).apply();
+            sizeName.setText(sizeNames[next]);
+            applyShelfScale();
+        });
+        rows.addView(sizeRow);
+        // What the shelf shows, whatever the size: OK steps Show all, Name only, Hide all.
+        View descRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+        ((ImageView) descRow.findViewById(R.id.icon)).setImageResource(R.drawable.ic_notes);
+        ((TextView) descRow.findViewById(R.id.title)).setText(R.string.shelf_place_info);
+        TextView descState = descRow.findViewById(R.id.status);
+        int[] modeNames = {R.string.shelf_show_all, R.string.shelf_name_only, R.string.shelf_hide_all};
+        descState.setText(modeNames[shelfMode]);
+        descRow.findViewById(R.id.dot).setVisibility(View.GONE);
+        descRow.setOnClickListener(v -> {
+            shelfMode = (shelfMode + 1) % modeNames.length;
+            getSharedPreferences("launch", MODE_PRIVATE).edit().putInt("shelf_mode", shelfMode).apply();
+            descState.setText(modeNames[shelfMode]);
+            applyShelfScale();
+        });
+        rows.addView(descRow);
+        // The daily ayat's translation: OK switches Malay and English, and the verse on screen follows.
+        if (ayahBlock != null) {
+            View langRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+            ((ImageView) langRow.findViewById(R.id.icon)).setImageResource(R.drawable.ic_translate);
+            ((TextView) langRow.findViewById(R.id.title)).setText(R.string.ayah_translation);
+            TextView lang = langRow.findViewById(R.id.status);
+            lang.setText(WeeklyAyah.english(this) ? R.string.ayah_english : R.string.ayah_malay);
+            langRow.findViewById(R.id.dot).setVisibility(View.GONE);
+            langRow.setOnClickListener(v -> {
+                boolean en = !WeeklyAyah.english(this);
+                WeeklyAyah.setEnglish(this, en);
+                lang.setText(en ? R.string.ayah_english : R.string.ayah_malay);
+                showAyah(WeeklyAyah.last(this));
+            });
+            rows.addView(langRow);
+        }
+        panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        int width = Math.max(Math.max(btnWallpaper.getWidth(), (int) (150 * density)), panel.getMeasuredWidth());
+        showMenu(panel, rows, btnWallpaper, width, false);
+    }
+
+    private String speedLabel(long ms) {
+        return ms < 60_000L ? getString(R.string.wallpaper_every_seconds, (int) (ms / 1000))
+                : getString(R.string.wallpaper_every_minutes, (int) (ms / 60_000L));
+    }
+
+    /**
+     * Asks for the Unsplash Access Key with the TV's keyboard (or the Google TV phone app, which can
+     * paste). Save switches the wallpaper to Unsplash; Remove forgets the key and goes back to Bing.
+     */
+    private void showUnsplashKeyDialog() {
+        android.widget.EditText field = new android.widget.EditText(this);
+        field.setSingleLine(true);
+        field.setHint(R.string.unsplash_key_hint);
+        field.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+                | android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+        field.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
+        FrameLayout box = new FrameLayout(this);
+        int pad = (int) (20 * density);
+        box.setPadding(pad, (int) (8 * density), pad, 0);
+        box.addView(field);
+        boolean hasKey = !PlaceWallpapers.unsplashKey(this, config).isEmpty();
+        android.app.AlertDialog.Builder b = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle(R.string.unsplash_key_title)
+                .setMessage(R.string.unsplash_key_message)
+                .setView(box)
+                .setPositiveButton(R.string.unsplash_key_save, null)
+                .setNegativeButton(R.string.unsplash_key_cancel, null);
+        if (hasKey) b.setNeutralButton(R.string.unsplash_key_remove, (d, w) -> {
+            PlaceWallpapers.setUnsplashKey(this, null);
+            if (PlaceWallpapers.UNSPLASH.equals(PlaceWallpapers.source(this)) && config.unsplashKey.isEmpty()) {
+                PlaceWallpapers.setSource(this, PlaceWallpapers.BING);
+                refreshPlacesIfDue();
+            }
+            Toast.makeText(this, R.string.unsplash_key_removed, Toast.LENGTH_SHORT).show();
+        });
+        android.app.AlertDialog dialog = b.create();
+        dialog.setOnShowListener(d -> dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            // Pasted keys often carry a space or line break at either end.
+            String key = field.getText().toString().replaceAll("\\s+", "");
+            if (!PlaceWallpapers.validKey(key)) {
+                Toast.makeText(this, R.string.unsplash_key_invalid, Toast.LENGTH_LONG).show();
+                return;
+            }
+            PlaceWallpapers.setUnsplashKey(this, key);
+            dialog.dismiss();
+            Toast.makeText(this, R.string.unsplash_key_done, Toast.LENGTH_SHORT).show();
+            PlaceWallpapers.setSource(this, PlaceWallpapers.UNSPLASH);
+            wallpaperAsked = getString(R.string.wallpaper_unsplash);
+            refreshPlacesIfDue();
+        }));
+        dialog.show();
+        field.requestFocus();
     }
 
     /**

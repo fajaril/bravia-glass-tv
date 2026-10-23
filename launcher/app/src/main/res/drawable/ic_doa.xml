@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Two open hands raised in doa, for the Doa Harian tile. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M10.6,21.2C8.3,20.4 6.3,18.5 5.2,15.9 4.3,13.7 4,11.2 4.4,8.9 4.6,7.8 6.1,7.8 6.3,8.9L6.9,12.3 6.9,5.6C6.9,4.4 8.6,4.4 8.7,5.6L9.1,11.4 9.4,4.2C9.5,3 11.1,3 11.2,4.2L11.4,12.6C11.5,15.6 11.2,18.5 10.6,21.2Z" />
+    <group android:scaleX="-1" android:translateX="24">
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M10.6,21.2C8.3,20.4 6.3,18.5 5.2,15.9 4.3,13.7 4,11.2 4.4,8.9 4.6,7.8 6.1,7.8 6.3,8.9L6.9,12.3 6.9,5.6C6.9,4.4 8.6,4.4 8.7,5.6L9.1,11.4 9.4,4.2C9.5,3 11.1,3 11.2,4.2L11.4,12.6C11.5,15.6 11.2,18.5 10.6,21.2Z" />
+    </group>
+</vector>

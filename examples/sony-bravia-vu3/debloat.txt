@@ -1,0 +1,10 @@
+# Sony BRAVIA VU3 (KD-65X75K, BRAVIA_VU3_4K, Realtek), Google TV 14 (API 34), build UKR1.240726.001. Malaysia.
+# Apply:   TV_HOST=<tv ip> tools/disable.sh examples/sony-bravia-vu3/debloat.txt
+# Undo:    TV_HOST=<tv ip> tools/restore.sh examples/sony-bravia-vu3/debloat.txt com.google.android.apps.tv.launcherx
+# Already disabled at the factory: com.sony.dtv.promos, com.sony.dtv.sonyselect, com.sony.dtv.sonytab, com.sonypicturescore.
+# Kept by owner's choice: all streaming apps (incl. Apple TV, Astro, Prime Video), Chromecast, AirPlay, Assistant.
+com.google.android.tungsten.setupwraith        # its RecoveryActivity otherwise takes over Home
+com.google.android.feedback
+com.sony.dtv.multiscreendemo
+com.sony.dtv.smarthelp
+com.google.android.play.games

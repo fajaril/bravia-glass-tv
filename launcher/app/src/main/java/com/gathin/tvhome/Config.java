@@ -42,6 +42,8 @@ final class Config {
     final String inputAction;
     final int columns;
     final int rowsBelowDock;
+    /** Space under the dock row in dp (dock_bottom_dp): less moves the dock down and hides more of the next row. */
+    final int dockBottomDp;
     final boolean shamsiDate;
     final boolean moduleCards;
     /** Calmer motion for weak GPUs (config.xml, reduced_motion): stiff spring, short fades, no replay. */
@@ -64,17 +66,28 @@ final class Config {
     final boolean places;
     /** Days between clearing the TV's app caches (see CacheCleaner); 0 never does. */
     final int cacheCleanDays;
+    /** JAKIM e-Solat zone for the prayer times panel (e.g. MLK01); empty keeps the panel off. */
+    final String prayerZone;
+    /** The ayat of the week above the prayer times (weekly_ayah); needs prayer_zone. */
+    final boolean weeklyAyah;
+    /** Where the weather line under the clock is for (weather_lat / weather_lon); NaN keeps it off. */
+    final double weatherLat, weatherLon;
+    /** The owner's Unsplash Access Key, and the topics to ask for; no key, no Unsplash pictures. */
+    final String unsplashKey;
+    final String unsplashQuery;
     /** Whether the overlay file was present and parsed. */
     final boolean overlayApplied;
 
     private Config(List<String> dockApps, List<String> hiddenApps, String liveTvPackage, String liveTvAction,
                    String sourcePanelService, String sourcePanelAction, String inputAction,
-                   int columns, int rowsBelowDock,
+                   int columns, int rowsBelowDock, int dockBottomDp,
                    boolean shamsiDate, boolean moduleCards, boolean reducedMotion, String vpnApp,
                    boolean showHomeSettingsShortcut, boolean showNetworkPill, boolean showLiveTv,
                    int backgroundColor,
                    File wallpaper, List<File> wallpapers, long wallpaperIntervalMs,
-                   boolean places, int cacheCleanDays, boolean overlayApplied) {
+                   boolean places, int cacheCleanDays, String prayerZone,
+                   String unsplashKey, String unsplashQuery, boolean weeklyAyah, double weatherLat, double weatherLon,
+                   boolean overlayApplied) {
         this.dockApps = Collections.unmodifiableList(dockApps);
         this.hiddenApps = Collections.unmodifiableList(hiddenApps);
         this.liveTvPackage = liveTvPackage;
@@ -84,6 +97,7 @@ final class Config {
         this.inputAction = inputAction;
         this.columns = columns;
         this.rowsBelowDock = rowsBelowDock;
+        this.dockBottomDp = dockBottomDp;
         this.shamsiDate = shamsiDate;
         this.moduleCards = moduleCards;
         this.reducedMotion = reducedMotion;
@@ -97,6 +111,12 @@ final class Config {
         this.wallpaperIntervalMs = wallpaperIntervalMs;
         this.places = places;
         this.cacheCleanDays = cacheCleanDays;
+        this.prayerZone = prayerZone;
+        this.unsplashKey = unsplashKey;
+        this.unsplashQuery = unsplashQuery;
+        this.weeklyAyah = weeklyAyah;
+        this.weatherLat = weatherLat;
+        this.weatherLon = weatherLon;
         this.overlayApplied = overlayApplied;
     }
 
@@ -170,11 +190,24 @@ final class Config {
         boolean places = wallpaperOn && (json == null || bool(json, "places", true));
         int cacheCleanDays = json != null ? integer(json, "cache_clean_days", CacheCleaner.DEFAULT_DAYS, 0, 90)
                 : CacheCleaner.DEFAULT_DAYS;
+        // Zone codes are letters then digits (MLK01, WLY01); anything else would only fail at JAKIM.
+        String prayerZone = json != null ? string(json, "prayer_zone", "").toUpperCase(java.util.Locale.ROOT) : "";
+        if (!prayerZone.matches("[A-Z]{3}[0-9]{2}")) prayerZone = "";
+        // Access Keys are letters, digits, - and _; anything else is a paste gone wrong.
+        String unsplashKey = json != null ? string(json, "unsplash_key", "") : "";
+        if (!unsplashKey.matches("[A-Za-z0-9_-]{20,80}")) unsplashKey = "";
+        String unsplashQuery = json != null ? string(json, "unsplash_query", "") : "";
+        if (unsplashQuery.isEmpty()) unsplashQuery = "nature landscape";
+        double weatherLat = json != null ? json.optDouble("weather_lat", Double.NaN) : Double.NaN;
+        double weatherLon = json != null ? json.optDouble("weather_lon", Double.NaN) : Double.NaN;
+        if (Math.abs(weatherLat) > 90 || Math.abs(weatherLon) > 180) weatherLat = weatherLon = Double.NaN;
 
+        int dockBottom = json != null ? integer(json, "dock_bottom_dp", 30, 0, 120) : 30;
         return new Config(dock, hidden, liveTv, liveTvAction, panelService, panelAction, inputAction,
-                Math.max(1, columns), Math.max(0, rowsBelow), shamsi, moduleCards, reducedMotion,
+                Math.max(1, columns), Math.max(0, rowsBelow), dockBottom, shamsi, moduleCards, reducedMotion,
                 vpn, homeSettings, networkPill, liveTvRow, background, wallpaper, wallpapers, wallpaperIntervalMs,
-                places, cacheCleanDays, applied);
+                places, cacheCleanDays, prayerZone, unsplashKey, unsplashQuery,
+                json != null && bool(json, "weekly_ayah", false), weatherLat, weatherLon, applied);
     }
 
     /** Reads and parses the overlay; any problem means "no overlay", never a crash on the home screen. */

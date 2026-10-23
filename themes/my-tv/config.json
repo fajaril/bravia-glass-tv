@@ -1,0 +1,21 @@
+{
+  "dock_apps": [
+    "com.netflix.ninja",
+    "com.google.android.youtube.tv",
+    "com.wbd.stream",
+    "com.disney.disneyplus",
+    "com.apple.atve.androidtv.appletv",
+    "com.spotify.tv.android"
+  ],
+  "hidden_apps": [
+    "in.startv.hotstar.dplus.tv"
+  ],
+  "prayer_zone": "MLK01",
+  "weekly_ayah": true,
+  "weather_lat": 2.1896,
+  "weather_lon": 102.2501,
+  "columns": 6,
+  "dock_bottom_dp": 8,
+  "unsplash_key": "",
+  "unsplash_query": "nature landscape"
+}

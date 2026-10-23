@@ -41,6 +41,11 @@ is ignored, and a file that doesn't parse is ignored as a whole, so a theme can 
 | `wallpaper` | bool | Show `wallpaper.jpg` from the theme folder (`true`), or ignore it (`false`) |
 | `wallpaper_seconds` | 5 to 86400 | Seconds between pictures; when set, it wins over `wallpaper_minutes` |
 | `wallpaper_minutes` | 0 to 1440 | Minutes between pictures when the theme has a `wallpapers/` folder; 0 changes only when Home starts. Default 30 |
+| `prayer_zone` | string | JAKIM e-Solat zone (e.g. `MLK01`, `WLY01`): today's prayer times across from the shelf, the next one lit, fetched monthly from e-solat.gov.my. Empty or missing: no panel |
+| `unsplash_key`, `unsplash_query` | string | Your own Unsplash Access Key, which adds Unsplash to the Wallpaper menu, and the topics to ask for (default `nature landscape`). Never commit a key |
+| `dock_bottom_dp` | 0 to 120 | Space under the dock row (default 30); smaller moves the dock down and hides more of the next row |
+| `weather_lat`, `weather_lon` | number | Shows the temperature and sky (Open-Meteo) and the nearest station's official Malaysian API (JAS APIMS) under the clock, every 15 minutes |
+| `weekly_ayah` | bool | A daily ayat (52 short verses, one a day, Quran.com text and Basmeih's Malay) above the prayer times; needs `prayer_zone` |
 | `cache_clean_days` | 0 to 90 | Days between clearing the TV's app caches, which the TV does itself (default 15); `0` turns it off. See [docs/cache-clean.md](../docs/cache-clean.md) |
 | `places` | bool | Pictures of places to visit (Bing's daily images, no key), renewed weekly with last week's deleted, each named with its country and a few lines about it; pictures with people in them are skipped. On by default, and they replace the theme's own pictures. `false`: the theme's own pictures, and the launcher never goes online |
 

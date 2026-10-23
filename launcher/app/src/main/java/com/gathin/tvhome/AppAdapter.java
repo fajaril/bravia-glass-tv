@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.Resources;
+import android.content.pm.ApplicationInfo;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -15,6 +16,7 @@ import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.provider.Settings;
+import android.os.Build;
 import android.util.DisplayMetrics;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -23,6 +25,7 @@ import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -70,6 +73,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         final String name;
         /** Ambient glow colour; 0 until sampled from the banner, or the card's accent from the start. */
         int ambient;
+        /** The app's own icon at full size, for its tvOS-style tile; loaded the first time it is needed. */
+        Drawable glyph;
+        boolean glyphLoaded, glyphIsLayer;
 
         Entry(String label, ComponentName component, Drawable banner, Drawable icon) {
             this(APP, label, component, banner, icon, null, 0);
@@ -116,13 +122,156 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         return tileHeightPx + Math.round(45 * density);
     }
 
+    /**
+     * tvOS-style tiles: the launcher draws these itself, a vivid gradient in the app's colour with the
+     * app's own icon large in the middle, for apps whose own TV art is a small icon beside some text.
+     * {top, middle, bottom, symbol colour}; a symbol colour of 0 keeps the icon's own colours.
+     */
+    private static final java.util.Map<String, int[]> TVOS = new java.util.HashMap<>();
+    private static final java.util.Map<String, String> WORDMARK = new java.util.HashMap<>();
+    /** Symbols the launcher draws itself, for apps whose own icon does not make a good tile. */
+    private static final java.util.Map<String, Integer> GLYPHS = new java.util.HashMap<>();
+    static {
+        GLYPHS.put("com.glasstv.status", R.drawable.ic_gauge);
+        GLYPHS.put("com.glasstv.quran", R.drawable.ic_rub_el_hizb);
+        GLYPHS.put("com.glasstv.weather", R.drawable.wx_partly);
+        GLYPHS.put("com.glasstv.quotes", R.drawable.ic_quote);
+        GLYPHS.put("com.glasstv.doa", R.drawable.ic_doa);
+        GLYPHS.put("com.glasstv.mathurat", R.drawable.ic_twilight);
+    }
+    static {
+        TVOS.put("com.android.tv.settings", new int[]{0xFFF2F2F7, 0xFFC7C7CC, 0xFFA2A2A7, 0xFF48484A});
+        TVOS.put("com.sony.dtv.timers", new int[]{0xFFFFB547, 0xFFFF8A00, 0xFFF06A00, 0xFFFFFFFF});
+        TVOS.put("com.android.tv", new int[]{0xFF64D2FF, 0xFF1E90FF, 0xFF0A60E0, 0xFFFFFFFF});
+        TVOS.put("com.realtek.tvmediaplay", new int[]{0xFFD68CFF, 0xFFA855F7, 0xFF7E3FD1, 0xFFFFFFFF});
+        TVOS.put("my.gov.rtm.tv", new int[]{0xFFF4FF6A, 0xFFD2E000, 0xFFA9B800, 0});
+        TVOS.put("com.sony.dtv.ecodashboard", new int[]{0xFF7CE38B, 0xFF34C759, 0xFF1F9E43, 0xFFFFFFFF});
+        TVOS.put("bn.rtbgo.tv", new int[]{0xFF9B5CFF, 0xFF6A2BD9, 0xFF43129E, 0xFFFFC93C});
+        TVOS.put("com.glasstv.status", new int[]{0xFF5A5E66, 0xFF2C2E33, 0xFF141518, 0xFF30D158});
+        // The three cards: emerald with a gold star, sky blue with the day's sky, plum with a gold quote mark.
+        TVOS.put("com.glasstv.quran", new int[]{0xFF22A07E, 0xFF0F6B52, 0xFF07402F, 0xFFE6C27A});
+        TVOS.put("com.glasstv.weather", new int[]{0xFF6CC6FF, 0xFF2A8CF0, 0xFF1259C9, 0});
+        TVOS.put("com.glasstv.quotes", new int[]{0xFFA77BE0, 0xFF6E44B0, 0xFF422474, 0xFFFFC98A});
+        TVOS.put("com.glasstv.doa", new int[]{0xFF3FD3C2, 0xFF138F86, 0xFF075550, 0xFFFFFFFF});
+        TVOS.put("com.glasstv.mathurat", new int[]{0xFFFFB86B, 0xFFE0705A, 0xFF7A3E8C, 0xFFFFFFFF});
+        // Google's apps: their own logo, in its own colours, on a white tile.
+        TVOS.put("com.android.vending", new int[]{0xFFFFFFFF, 0xFFF7F7F9, 0xFFE9E9EE, 0});
+        TVOS.put("com.google.android.videos", new int[]{0xFFFFFFFF, 0xFFF7F7F9, 0xFFE9E9EE, 0});
+        TVOS.put("com.google.android.youtube.tvkids", new int[]{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0});   // its logo sits on its own white square
+        TVOS.put("com.google.android.youtube.tvmusic", new int[]{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0});   // its logo sits on its own white square
+        TVOS.put("my.com.tonton.screen", new int[]{0xFF3A9BF0, 0xFF1A62CC, 0xFF0B3A8F, 0xFFFFFFFF});
+        TVOS.put("com.tm.unifitv.tv", new int[]{0xFFFFA040, 0xFFFF7A00, 0xFFE05A00, 0xFFFFFFFF});
+        // Apps whose only icon is a small picture of their name (or none): the name is set in sharp type instead.
+        WORDMARK.put("bn.rtbgo.tv", "RTBgo");
+        WORDMARK.put("com.tm.unifitv.tv", "unifi TV");
+        WORDMARK.put("my.com.tonton.screen", "tonton");
+    }
+    private static final String STYLE_PREFIX = "tile_style_";
+
+    /** Whether this app's tile is drawn tvOS-style: the owner's choice, else yes for the apps above. */
+    boolean tvosStyle(String pkg) {
+        String s = ctx.getSharedPreferences(ORDER_PREFS, Context.MODE_PRIVATE).getString(STYLE_PREFIX + pkg, null);
+        return s != null ? s.equals("tvos") : TVOS.containsKey(pkg);
+    }
+
+    /** Switches an app between its own art and a tvOS-style tile, and redraws it. */
+    void setTvosStyle(String pkg, boolean on) {
+        ctx.getSharedPreferences(ORDER_PREFS, Context.MODE_PRIVATE).edit().putString(STYLE_PREFIX + pkg, on ? "tvos" : "original").apply();
+        for (int i = 0; i < items.size(); i++) if (items.get(i).pkg.equals(pkg)) notifyItemChanged(i);
+    }
+
+    /** The app's icon at the highest density it has, and whether it is an adaptive icon's layer (drawn larger). */
+    private void loadGlyph(Entry e) {
+        if (e.glyphLoaded) return;
+        e.glyphLoaded = true;
+        try {
+            PackageManager pm = ctx.getPackageManager();
+            ApplicationInfo ai = pm.getApplicationInfo(e.pkg, 0);
+            Drawable d = null;
+            if (ai.icon != 0) {
+                try {
+                    d = pm.getResourcesForApplication(ai).getDrawableForDensity(ai.icon, Math.max(DisplayMetrics.DENSITY_XHIGH, ctx.getResources().getDisplayMetrics().densityDpi), null);
+                } catch (Exception ignored) {
+                }
+            }
+            if (d == null) d = pm.getApplicationIcon(ai);
+            if (d instanceof android.graphics.drawable.AdaptiveIconDrawable) {
+                android.graphics.drawable.AdaptiveIconDrawable a = (android.graphics.drawable.AdaptiveIconDrawable) d;
+                Drawable mono = Build.VERSION.SDK_INT >= 33 ? a.getMonochrome() : null;
+                e.glyph = mono != null ? mono : a.getForeground();
+                e.glyphIsLayer = true;
+                if (mono != null) e.glyph.setTint(0xFFFFFFFF);
+            } else {
+                e.glyph = d;
+            }
+        } catch (Exception ex) {
+            e.glyph = e.icon;
+        }
+    }
+
+    /** The tile's colours: hand-picked for the apps above, else a gradient from the icon's main colour. */
+    private int[] tvosColours(Entry e) {
+        int[] c = TVOS.get(e.pkg);
+        if (c != null) return c;
+        int base = e.glyph != null ? mainColour(e.glyph) : 0xFF5E5CE6;
+        return new int[]{blend(base, 0xFFFFFFFF, .28f), base, blend(base, 0xFF000000, .28f), 0xFFFFFFFF};
+    }
+
+    private static int mainColour(Drawable d) {
+        try {
+            Bitmap b = Bitmap.createBitmap(24, 24, Bitmap.Config.ARGB_8888);
+            Canvas cv = new Canvas(b);
+            d.setBounds(0, 0, 24, 24);
+            d.draw(cv);
+            float best = -1;
+            int pick = 0xFF5E5CE6;
+            float[] hsv = new float[3];
+            for (int y = 0; y < 24; y++) {
+                for (int x = 0; x < 24; x++) {
+                    int p = b.getPixel(x, y);
+                    if (Color.alpha(p) < 200) continue;
+                    Color.colorToHSV(p, hsv);
+                    float score = hsv[1] * hsv[2];
+                    if (score > best) {
+                        best = score;
+                        pick = p;
+                    }
+                }
+            }
+            b.recycle();
+            return pick | 0xFF000000;
+        } catch (Exception ex) {
+            return 0xFF5E5CE6;
+        }
+    }
+
+    private static int blend(int a, int b, float t) {
+        return Color.rgb(Math.round(Color.red(a) + (Color.red(b) - Color.red(a)) * t),
+                Math.round(Color.green(a) + (Color.green(b) - Color.green(a)) * t),
+                Math.round(Color.blue(a) + (Color.blue(b) - Color.blue(a)) * t));
+    }
+
+    /** Gradient, lighter at the top, with a soft sheen over its upper half, in the tile's rounded shape. */
+    private Drawable tvosBackground(int[] c, float radius) {
+        android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, new int[]{c[0], c[1], c[2]});
+        g.setCornerRadius(radius);
+        android.graphics.drawable.GradientDrawable sheen = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x38FFFFFF, 0x0FFFFFFF, 0x00FFFFFF, 0x00FFFFFF});
+        sheen.setCornerRadius(radius);
+        return new android.graphics.drawable.LayerDrawable(new Drawable[]{g, sheen});
+    }
+
     private final Context ctx;
     private final TileListener listener;
     private final int dockSize;
     /** Dock order (config.xml dock_apps, or a theme's config.json). */
     private final List<String> favourites;
-    /** Never shown as tiles (res/values/config.xml, hidden_apps). */
+    /** Never shown as tiles: config hidden_apps, plus the apps hidden from the TV with Hide. */
     private final Set<String> hidden;
+    /** The apps hidden from the TV (app menu, Hide), kept in the tiles preferences. */
+    private final Set<String> userHidden = new HashSet<>();
+    private static final String HIDDEN_KEY = "user_hidden";
     private final boolean showHomeSettings;
     /** Calmer motion for weak GPUs (config.xml, reduced_motion): no overshoot, shorter fades. */
     private final boolean reducedMotion;
@@ -139,6 +288,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         this.dockSize = dockSize;
         this.favourites = cfg.dockApps;
         this.hidden = new HashSet<>(cfg.hiddenApps);
+        userHidden.addAll(ctx.getSharedPreferences(ORDER_PREFS, Context.MODE_PRIVATE).getStringSet(HIDDEN_KEY, new HashSet<>()));
+        hidden.addAll(userHidden);
         this.showHomeSettings = cfg.showHomeSettingsShortcut;
         this.reducedMotion = cfg.reducedMotion;
         // Tiles keep their identity across reload(), so a focused tile stays on its app instead of
@@ -205,10 +356,14 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         for (Cards.Card c : cards) cardByPkg.put(c.pkg, c);
         List<Entry> fresh = new ArrayList<>();
         Map<String, Entry> apps = new HashMap<>();
+        // Some apps list the same screen twice under one name (Sony's Timers & Clock: an activity and an
+        // alias); one tile each per app and name.
+        Set<String> named = new HashSet<>();
         for (ResolveInfo ri : found) {
             if (ri.activityInfo == null) continue;
             String pkg = ri.activityInfo.packageName;
             if (pkg.equals(ctx.getPackageName()) || hidden.contains(pkg)) continue;
+            if (!named.add(pkg + '|' + ri.loadLabel(pm))) continue;
             ComponentName component = new ComponentName(pkg, ri.activityInfo.name);
             Cards.Card card = cardByPkg.get(pkg);
             if (card != null && !card.component.equals(component)) continue;   // the card stands in for this tile
@@ -312,7 +467,75 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         h.name.setAlpha(focused ? 1f : 0f);
         h.card.setScaleX(focused ? FOCUS_SCALE : 1f);
         h.card.setScaleY(focused ? FOCUS_SCALE : 1f);
-        if (e.banner != null) {
+        ViewGroup.MarginLayoutParams iconLp = (ViewGroup.MarginLayoutParams) h.icon.getLayoutParams();
+        float density = ctx.getResources().getDisplayMetrics().density;
+        if (e.kind != Entry.HOME_SETTINGS && tvosStyle(e.pkg)) {
+            // tvOS style: the launcher's own gradient, the app's icon large in the middle, no text on the tile.
+            loadGlyph(e);
+            int[] c = tvosColours(e);
+            if (e.ambient == 0) e.ambient = c[1];
+            h.card.setBackground(tvosBackground(c, 16 * density));
+            h.banner.setImageDrawable(null);
+            h.banner.setVisibility(View.GONE);
+            h.label.setVisibility(View.GONE);
+            int tileH = h.card.getLayoutParams().height;
+            // About two thirds of the tile's height; an adaptive icon's layer has a wide margin, so it is drawn larger.
+            // Some icons carry a wide margin of their own (YouTube Kids and Music): those are drawn larger still.
+            float extra = e.pkg.startsWith("com.google.android.youtube.tv") ? 1.6f : 1f;
+            int size = Math.round(tileH * (e.glyphIsLayer ? 1.6f : 0.78f) * extra);
+            iconLp.width = size;
+            iconLp.height = size;
+            iconLp.bottomMargin = 0;
+            h.icon.setLayoutParams(iconLp);
+            // Settings: a clean gear with a hole, as on tvOS, rather than the system's coloured logo.
+            if (e.pkg.equals("com.android.tv.settings")) {
+                e.glyph = ctx.getDrawable(R.drawable.ic_settings);
+                e.glyphIsLayer = false;
+            } else if (GLYPHS.containsKey(e.pkg)) {
+                e.glyph = ctx.getDrawable(GLYPHS.get(e.pkg));
+                e.glyphIsLayer = false;
+            }
+            String word = WORDMARK.get(e.pkg);
+            if (word != null) {
+                // A wordmark: the name in bold type, centred, in the tile's symbol colour.
+                h.icon.setVisibility(View.GONE);
+                FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) h.label.getLayoutParams();
+                lp.gravity = android.view.Gravity.CENTER;
+                h.label.setLayoutParams(lp);
+                h.label.setPadding(0, 0, 0, 0);
+                h.label.setText(word);
+                h.label.setTextColor(c[3] != 0 ? c[3] : 0xFFFFFFFF);
+                h.label.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, tileH * 0.34f);
+                h.label.setFontVariationSettings("'wght' 700");
+                h.label.setLetterSpacing(-0.03f);
+                h.label.setVisibility(View.VISIBLE);
+            } else {
+                h.icon.setImageDrawable(e.glyph);
+                // A one-colour symbol (monochrome layer, or the icon itself turned into a silhouette).
+                if (c[3] != 0) h.icon.setColorFilter(c[3], android.graphics.PorterDuff.Mode.SRC_IN);
+                else h.icon.clearColorFilter();
+                h.icon.setVisibility(View.VISIBLE);
+            }
+        } else {
+            h.card.setBackgroundResource(R.drawable.tile_bg);
+            h.icon.clearColorFilter();
+            // The label back as the layout has it, after a wordmark used it.
+            FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) h.label.getLayoutParams();
+            lp.gravity = android.view.Gravity.BOTTOM;
+            h.label.setLayoutParams(lp);
+            h.label.setPadding(Math.round(10 * density), 0, Math.round(10 * density), Math.round(8 * density));
+            h.label.setTextColor(0xFFFFFFFF);
+            h.label.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13);
+            h.label.setFontVariationSettings("'wght' 400");
+            h.label.setLetterSpacing(0f);
+            iconLp.width = Math.round(48 * density);
+            iconLp.height = Math.round(48 * density);
+            iconLp.bottomMargin = Math.round(14 * density);
+            h.icon.setLayoutParams(iconLp);
+        }
+        if (e.kind != Entry.HOME_SETTINGS && tvosStyle(e.pkg)) {
+            // drawn above
+        } else if (e.banner != null) {
             h.banner.setImageDrawable(e.banner);
             h.banner.setVisibility(View.VISIBLE);
             h.icon.setVisibility(View.GONE);
@@ -355,6 +578,36 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             ctx.startActivity(i);
         } catch (ActivityNotFoundException ignored) {
         }
+    }
+
+    /** The package of the app at a position, or null. */
+    String packageAt(int position) {
+        return position >= 0 && position < items.size() ? items.get(position).pkg : null;
+    }
+
+    /** Whether the tile at {@code position} is an app that can be hidden (not the Default home tile). */
+    boolean canHide(int position) {
+        return position >= 0 && position < items.size() && items.get(position).kind != Entry.HOME_SETTINGS;
+    }
+
+    /** The apps hidden from the TV, by package; empty when none. */
+    Set<String> userHidden() {
+        return new HashSet<>(userHidden);
+    }
+
+    /** Hides or shows an app again; the next reload() rebuilds the tiles without (or with) it. */
+    void setHidden(String pkg, boolean hide) {
+        if (pkg == null) return;
+        if (hide) {
+            userHidden.add(pkg);
+            hidden.add(pkg);
+        } else {
+            userHidden.remove(pkg);
+            hidden.remove(pkg);
+        }
+        ctx.getSharedPreferences(ORDER_PREFS, Context.MODE_PRIVATE).edit()
+                .putStringSet(HIDDEN_KEY, new HashSet<>(userHidden)).apply();
+        builtFrom = null;   // the installed apps did not change, the list did: rebuild
     }
 
     /** Whether the tile at {@code position} can be moved: every app can, the Default home tile cannot. */

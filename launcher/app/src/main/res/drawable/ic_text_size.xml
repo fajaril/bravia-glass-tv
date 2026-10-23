@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Material Icons "format_size" (Apache 2.0): for the size of the place's name and description. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="18.7dp" android:height="18.7dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M9,4v3h5v12h3L17,7h5L22,4L9,4zM3,12h3v7h3v-7h3L12,9L3,9v3z" />
+</vector>

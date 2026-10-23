@@ -32,9 +32,9 @@ final class Backdrop {
      * The blurred copy is this many times smaller than the screen in each direction. Shrinking is
      * itself a blur, so this sets a floor on the softness: an eighth was too soft to tune down.
      */
-    static final int SCALE = 2;
+    static final int SCALE = 4;
     /** Box radius and passes at the small size: about 4px of softening on screen. */
-    private static final int RADIUS = 2;
+    private static final int RADIUS = 1;
     private static final int PASSES = 2;
 
     private static Bitmap blurred;
