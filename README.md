@@ -49,7 +49,7 @@ Each one is a plain Java Android TV app in [`apps/`](apps). Each gets a card on 
 | [Weather](apps/weather-tv) | `com.glasstv.weather` | Melaka weather, 12-hour and 7-day forecast, API, and a dashboard of all 16 states | Open-Meteo, DOE APIMS |
 | [Quran](apps/quran-tv) | `com.glasstv.quran` | 114 surahs, Malay / English translation, Alafasy recitation, offline once opened | Quran.com API v4 |
 | [Quotes](apps/quotes-tv) | `com.glasstv.quotes` | A quote a day: hadith, the scholars, wisdom and peribahasa, with favourites. Works offline | Built-in `quotes.json` |
-| [TV Status](apps/status-tv) | `com.glasstv.status` | Memory and storage rings, network, uptime, and "Free up memory" | The TV itself |
+| [TV Status](apps/status-tv) | `com.glasstv.status` | Memory and storage rings, uptime, "Free up memory", and a Network tab that checks the router, internet line, DNS, download speed and streaming services, then says where a lag comes from | The TV itself, Cloudflare speed test |
 | [Doa Harian](apps/doa-tv) | `com.glasstv.doa` | Daily duas in 12 groups, Arabic, English and recitation | Hisnul Muslim |
 | [Al-Ma'thurat](apps/mathurat-tv) | `com.glasstv.mathurat` | Wazifah Sughra for the morning and the evening, recited line by line | Quran.com, Hisnul Muslim |
 
@@ -57,7 +57,8 @@ Each one is a plain Java Android TV app in [`apps/`](apps). Each gets a card on 
 |---|---|
 | ![Weather](showcase/12-weather-app-melaka.jpg) | ![Malaysia API](showcase/13-weather-malaysia-air-quality-dashboard.jpg) |
 | ![Quran](showcase/16-quran-reading-with-recitation.jpg) | ![Quotes](showcase/17-quotes-peribahasa.jpg) |
-| ![TV Status](showcase/27-tv-status-app.jpg) | ![Doa Harian](showcase/29-doa-harian-list.jpg) |
+| ![TV Status](showcase/27-tv-status-app.jpg) | ![TV Status network](showcase/35-tv-status-network-tab.jpg) |
+| ![Doa Harian](showcase/29-doa-harian-list.jpg) | ![Home tiles](showcase/36-al-mathurat-icon-redrawn.jpg) |
 | ![Al-Ma'thurat](showcase/31-al-mathurat-pagi-petang.jpg) | ![Al-Ma'thurat Petang](showcase/33-al-mathurat-petang-zikir.jpg) |
 
 Notes on the religious text:

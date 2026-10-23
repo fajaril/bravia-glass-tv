@@ -4,8 +4,10 @@
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
-    <!-- Free up memory: close apps that are idling in the background. Nothing goes online. -->
+    <!-- Free up memory: close apps that are idling in the background. -->
     <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
+    <!-- The Network tab: pings, a short download test and the streaming services, only while it runs. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- The installed apps, for Free up memory (Android 11+ package visibility). -->

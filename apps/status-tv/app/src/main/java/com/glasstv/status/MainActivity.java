@@ -33,12 +33,13 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * The TV's memory, storage and network at a glance, refreshed every two seconds, with a button that
- * closes apps idling in the background to give memory back. Reads only what Android hands any app;
- * nothing goes online.
+ * Two tabs. Overview: the TV's memory, storage and network at a glance, refreshed every two seconds, with
+ * a button that closes apps idling in the background to give memory back. Network: a check of the home
+ * network and the internet line (router, internet, DNS, download speed, streaming services) that says in
+ * plain words where a lag comes from. Only the Network check goes online, and only while it runs.
  */
 public class MainActivity extends Activity {
-    private static final int GREEN = 0xFF30D158, YELLOW = 0xFFFFD60A, RED = 0xFFFF453A, MUTE = 0xA6FFFFFF;
+    static final int GREEN = 0xFF30D158, YELLOW = 0xFFFFD60A, RED = 0xFFFF453A, MUTE = 0xA6FFFFFF;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable tick = new Runnable() {
@@ -53,6 +54,9 @@ public class MainActivity extends Activity {
     private Ring ramRing, diskRing;
     private TextView ramBig, ramSub, diskBig, diskSub, freeNote, info, infoValues;
     private TextView freeButton;
+    private TextView tabOverview, tabNetwork;
+    private View overviewPage;
+    private NetworkPage networkPage;
 
     /** Left for another app or Home: close completely, so the TV has the memory back at once. */
     @Override
@@ -78,13 +82,33 @@ public class MainActivity extends Activity {
         page.setPadding(dp(64), dp(40), dp(64), dp(28));
         page.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF2C3038, 0xFF0E0F12}));
 
-        TextView title = text("TV Status", 34, 0xFFFFFFFF, 500);
-        page.addView(title);
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.addView(text("TV Status", 34, 0xFFFFFFFF, 500), weight());
+        tabOverview = tab("Overview");
+        tabNetwork = tab("Network");
+        head.addView(tabOverview);
+        LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        tlp.leftMargin = dp(10);
+        head.addView(tabNetwork, tlp);
+        page.addView(head);
         TextView model = text(Build.MANUFACTURER.toUpperCase(Locale.ROOT) + " " + Build.MODEL + "  ·  ANDROID " + Build.VERSION.RELEASE,
                 13, MUTE, 500);
         model.setLetterSpacing(0.16f);
         model.setPadding(0, dp(4), 0, dp(24));
         page.addView(model);
+
+        // The two tabs' pages, one shown at a time.
+        android.widget.FrameLayout pages = new android.widget.FrameLayout(this);
+        LinearLayout overview = new LinearLayout(this);
+        overview.setOrientation(LinearLayout.VERTICAL);
+        overviewPage = overview;
+        networkPage = new NetworkPage(this);
+        networkPage.setVisibility(View.GONE);
+        pages.addView(overview);
+        pages.addView(networkPage);
+        page.addView(pages);
 
         LinearLayout gauges = new LinearLayout(this);
         gauges.setOrientation(LinearLayout.HORIZONTAL);
@@ -98,7 +122,7 @@ public class MainActivity extends Activity {
         View gap = new View(this);
         gauges.addView(gap, new LinearLayout.LayoutParams(dp(20), 1));
         gauges.addView(card("Storage", diskRing, diskBig, diskSub), weight());
-        page.addView(gauges);
+        overview.addView(gauges);
 
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
@@ -114,7 +138,7 @@ public class MainActivity extends Activity {
         freeNote = text("Closes apps idling in the background. Nothing is deleted; they open again as normal.", 14, MUTE, 400);
         freeNote.setPadding(dp(18), 0, 0, 0);
         row.addView(freeNote, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        page.addView(row);
+        overview.addView(row);
 
         // Two columns, so the values line up: the names in grey, the values in white.
         LinearLayout box = new LinearLayout(this);
@@ -129,10 +153,65 @@ public class MainActivity extends Activity {
         box.addView(infoValues);
         LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         ilp.topMargin = dp(22);
-        page.addView(box, ilp);
+        overview.addView(box, ilp);
+
+        // Up from a page reaches the tabs; selecting a tab shows its page, Down goes back into it.
+        freeButton.setId(View.generateViewId());
+        networkPage.button.setId(View.generateViewId());
+        tabOverview.setId(View.generateViewId());
+        tabNetwork.setId(View.generateViewId());
+        freeButton.setNextFocusUpId(tabOverview.getId());
+        networkPage.button.setNextFocusUpId(tabNetwork.getId());
+        tabOverview.setNextFocusDownId(freeButton.getId());
+        tabNetwork.setNextFocusDownId(networkPage.button.getId());
+        tabOverview.setOnFocusChangeListener((v, has) -> { if (has) show(false); });
+        tabNetwork.setOnFocusChangeListener((v, has) -> { if (has) show(true); });
+        tabOverview.setOnClickListener(v -> freeButton.requestFocus());
+        tabNetwork.setOnClickListener(v -> networkPage.button.requestFocus());
 
         setContentView(page);
+        show(false);
         freeButton.requestFocus();
+    }
+
+    /** Shows the Network page (and starts its check the first time) or the Overview. */
+    private void show(boolean network) {
+        overviewPage.setVisibility(network ? View.GONE : View.VISIBLE);
+        networkPage.setVisibility(network ? View.VISIBLE : View.GONE);
+        tabOverview.setSelected(!network);
+        tabNetwork.setSelected(network);
+        if (network) networkPage.runOnce();
+    }
+
+    /** A tab: a pill, white when selected, with a ring when it has the focus. */
+    private TextView tab(String name) {
+        TextView t = text(name, 16, 0xFFFFFFFF, 500);
+        t.setPadding(dp(20), dp(8), dp(20), dp(8));
+        t.setFocusable(true);
+        t.setClickable(true);
+        t.setTextColor(new android.content.res.ColorStateList(
+                new int[][]{{android.R.attr.state_selected}, {}}, new int[]{0xFF000000, 0xD9FFFFFF}));
+        GradientDrawable sel = new GradientDrawable();
+        sel.setColor(0xFFFFFFFF);
+        sel.setCornerRadius(dp(20));
+        GradientDrawable selFocus = new GradientDrawable();
+        selFocus.setColor(0xFFFFFFFF);
+        selFocus.setCornerRadius(dp(20));
+        selFocus.setStroke(dp(2), 0xFF64D2FF);
+        GradientDrawable focus = new GradientDrawable();
+        focus.setColor(0x33FFFFFF);
+        focus.setCornerRadius(dp(20));
+        focus.setStroke(dp(2), 0xFF64D2FF);
+        GradientDrawable idle = new GradientDrawable();
+        idle.setColor(0x14FFFFFF);
+        idle.setCornerRadius(dp(20));
+        android.graphics.drawable.StateListDrawable s = new android.graphics.drawable.StateListDrawable();
+        s.addState(new int[]{android.R.attr.state_selected, android.R.attr.state_focused}, selFocus);
+        s.addState(new int[]{android.R.attr.state_selected}, sel);
+        s.addState(new int[]{android.R.attr.state_focused}, focus);
+        s.addState(new int[]{}, idle);
+        t.setBackground(s);
+        return t;
     }
 
     @Override
@@ -145,6 +224,7 @@ public class MainActivity extends Activity {
     protected void onPause() {
         super.onPause();
         handler.removeCallbacks(tick);
+        networkPage.cancel();
     }
 
     private void refresh() {
@@ -175,7 +255,7 @@ public class MainActivity extends Activity {
     }
 
     /** Ethernet or Wi-Fi, and the TV's address on the home network. */
-    private String network() {
+    String network() {
         try {
             ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
             Network n = cm.getActiveNetwork();
@@ -255,7 +335,7 @@ public class MainActivity extends Activity {
         return new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
     }
 
-    private GradientDrawable glass() {
+    GradientDrawable glass() {
         GradientDrawable g = new GradientDrawable();
         g.setColor(0x1AFFFFFF);
         g.setCornerRadius(dp(18));
@@ -263,7 +343,7 @@ public class MainActivity extends Activity {
         return g;
     }
 
-    private android.graphics.drawable.StateListDrawable buttonBackground() {
+    android.graphics.drawable.StateListDrawable buttonBackground() {
         GradientDrawable on = new GradientDrawable();
         on.setColor(0xFFFFFFFF);
         on.setCornerRadius(dp(24));
@@ -276,7 +356,7 @@ public class MainActivity extends Activity {
         return s;
     }
 
-    private TextView text(String s, float sp, int color, int weight) {
+    TextView text(String s, float sp, int color, int weight) {
         TextView t = new TextView(this);
         t.setText(s);
         t.setTextSize(sp);
@@ -286,7 +366,7 @@ public class MainActivity extends Activity {
         return t;
     }
 
-    private int dp(float v) {
+    int dp(float v) {
         return Math.round(v * density);
     }
 
