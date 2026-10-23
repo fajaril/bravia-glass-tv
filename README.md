@@ -49,7 +49,7 @@ Each one is a plain Java Android TV app in [`apps/`](apps). Each gets a card on 
 | [Weather](apps/weather-tv) | `com.glasstv.weather` | Melaka weather, 12-hour and 7-day forecast, API, and a dashboard of all 16 states | Open-Meteo, DOE APIMS |
 | [Quran](apps/quran-tv) | `com.glasstv.quran` | 114 surahs, Malay / English translation, Alafasy recitation, offline once opened | Quran.com API v4 |
 | [Quotes](apps/quotes-tv) | `com.glasstv.quotes` | A quote a day: hadith, the scholars, wisdom and peribahasa, with favourites. Works offline | Built-in `quotes.json` |
-| [TV Status](apps/status-tv) | `com.glasstv.status` | Memory and storage rings, uptime, "Free up memory"; an Apps tab with the memory each app uses and Restart / Close / App info (through the TV's own debugging service, allowed once on the TV); and a Network tab that checks the router, internet line, DNS, download speed and streaming services, then says where a lag comes from | The TV itself, Cloudflare speed test |
+| [TV Status](apps/status-tv) | `com.glasstv.status` | Memory and storage rings, uptime, "Free up memory" and "Restart TV" (two presses); an Apps tab with the memory each app uses and Restart / Close / App info (through the TV's own debugging service, allowed once on the TV); and a Network tab that checks the router, internet line, DNS, download speed and streaming services, then says where a lag comes from | The TV itself, Cloudflare speed test |
 | [Doa Harian](apps/doa-tv) | `com.glasstv.doa` | Daily duas in 12 groups, Arabic, English and recitation | Hisnul Muslim |
 | [Al-Ma'thurat](apps/mathurat-tv) | `com.glasstv.mathurat` | Wazifah Sughra for the morning and the evening, recited line by line | Quran.com, Hisnul Muslim |
 

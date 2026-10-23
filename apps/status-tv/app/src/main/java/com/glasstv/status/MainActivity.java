@@ -54,7 +54,15 @@ public class MainActivity extends Activity {
     private Typeface outfit;
     private Ring ramRing, diskRing;
     private TextView ramBig, ramSub, diskBig, diskSub, freeNote, info, infoValues;
-    private TextView freeButton;
+    private TextView freeButton, restartButton;
+    /** Restart TV asks first: a second OK within a few seconds restarts. */
+    private boolean restartArmed;
+    private final Runnable disarm = () -> {
+        restartArmed = false;
+        restartButton.setText("Restart TV");
+        freeNote.setText(FREE_NOTE);
+    };
+    private static final String FREE_NOTE = "Free up memory closes apps idling in the background. Nothing is deleted.";
     private TextView tabOverview, tabApps, tabNetwork;
     private View overviewPage;
     private AppsPage appsPage;
@@ -143,7 +151,16 @@ public class MainActivity extends Activity {
         freeButton.setBackground(buttonBackground());
         freeButton.setOnClickListener(v -> freeMemory());
         row.addView(freeButton);
-        freeNote = text("Closes apps idling in the background. Nothing is deleted; they open again as normal.", 14, MUTE, 400);
+        restartButton = text("Restart TV", 18, 0xFF000000, 600);
+        restartButton.setPadding(dp(26), dp(12), dp(26), dp(12));
+        restartButton.setFocusable(true);
+        restartButton.setClickable(true);
+        restartButton.setBackground(buttonBackground());
+        restartButton.setOnClickListener(v -> restartTv());
+        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        rlp.leftMargin = dp(12);
+        row.addView(restartButton, rlp);
+        freeNote = text(FREE_NOTE, 14, MUTE, 400);
         freeNote.setPadding(dp(18), 0, 0, 0);
         row.addView(freeNote, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         overview.addView(row);
@@ -294,6 +311,42 @@ public class MainActivity extends Activity {
         } catch (Exception e) {
             return "Unknown";
         }
+    }
+
+    /**
+     * Restarts the whole TV, which clears its memory completely. The first OK only asks; a second OK
+     * within five seconds restarts, through the TV's debugging shell (allowed once for the Apps tab).
+     */
+    private void restartTv() {
+        if (!restartArmed) {
+            restartArmed = true;
+            restartButton.setText("Press OK again to restart");
+            freeNote.setText("The TV turns off and on again (about a minute). Anything playing stops.");
+            handler.postDelayed(disarm, 5000);
+            return;
+        }
+        handler.removeCallbacks(disarm);
+        restartArmed = false;
+        restartButton.setText("Restarting…");
+        new Thread(() -> {
+            String problem = null;
+            try {
+                TvShell.run(this, true, "svc power reboot");
+            } catch (java.io.IOException e) {
+                // The shell drops the connection as the TV goes down: that is success, not a failure,
+                // unless the service could not be reached at all.
+                if (e instanceof java.net.ConnectException) problem = "Turn on USB debugging (Developer options), or restart from Settings → System → Restart.";
+            } catch (TvShell.NotAllowed e) {
+                problem = "The TV did not allow it. Choose Always allow and Allow on the TV's question, then try again.";
+            } catch (Exception e) {
+                problem = "Could not restart: " + e.getMessage();
+            }
+            final String p = problem;
+            if (p != null) handler.post(() -> {
+                restartButton.setText("Restart TV");
+                freeNote.setText(p);
+            });
+        }, "restart-tv").start();
     }
 
     /** Closes every app idling in the background (not this one, not Home), then says how much came back. */
