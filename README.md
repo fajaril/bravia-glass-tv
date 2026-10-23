@@ -28,7 +28,7 @@ Tested on a Sony BRAVIA VU3 (KD-65X75K), Google TV / Android TV 14, over Etherne
 - **Wallpapers**: Bing (a rolling 60-day pool from the US, UK, Canada, Australia and India editions),
   Wikimedia Picture of the Day, Nature & Wildlife, NASA Image of the Day, Smithsonian Open Access art, and
   Unsplash (your own key, typed on the TV). It also lets you set how often the wallpaper changes, the text size and the place info.
-- **Now Playing**: while Spotify or another music app plays (and for 5 minutes after a pause), a small card above the place
+- **Now Playing**: while Spotify or another music app plays (and for 3 minutes after a pause), a small card above the place
   name shows the song and cover with previous / play-pause / next; Up from the dock reaches it.
 - **Round top buttons** that expand with their name when selected.
 - **App menu** (hold OK on an app): Move, Update, tvOS-style or the app's own tile, Hide from Home,

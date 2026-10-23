@@ -33,7 +33,7 @@ import java.util.Locale;
  * Now Playing on Home: when music plays in another app (Spotify, YouTube Music…), a small card at the
  * top of the shelf shows the song, the artist and the cover, with previous, play/pause and next. Up from
  * the dock reaches it. It listens only while Home is on screen, and shows nothing until the TV has
- * allowed {@link MediaAccess}. A stopped or closed player takes the card away, and so does five minutes
+ * allowed {@link MediaAccess}. A stopped or closed player takes the card away, and so does three minutes
  * of pause: Spotify keeps a paused player open for hours, which left the card on Home long after.
  */
 final class NowPlaying {
@@ -49,7 +49,7 @@ final class NowPlaying {
     private MediaController current;
     private boolean listening;
     /** How long a paused player keeps its card. */
-    private static final long PAUSED_KEEP_MS = 5 * 60 * 1000L;
+    private static final long PAUSED_KEEP_MS = 3 * 60 * 1000L;
     /** When a paused player was first seen paused, for players that give no time of their own. */
     private static final java.util.Map<Object, Long> pausedSeen = new java.util.HashMap<>();
     private final Runnable expire = () -> pick(null);
@@ -201,7 +201,7 @@ final class NowPlaying {
         follow(best);
     }
 
-    /** Playing, buffering, or paused for less than five minutes, with something to name. */
+    /** Playing, buffering, or paused for less than three minutes, with something to name. */
     private static boolean playable(MediaController c) {
         if (c == null) return false;
         PlaybackState s = c.getPlaybackState();
@@ -293,7 +293,7 @@ final class NowPlaying {
         next.setVisibility((actions & PlaybackState.ACTION_SKIP_TO_NEXT) != 0 ? View.VISIBLE : View.GONE);
         setArt(m);
         card.setVisibility(View.VISIBLE);
-        // Paused: the card goes by itself when the five minutes are up.
+        // Paused: the card goes by itself when the three minutes are up.
         handler.removeCallbacks(expire);
         if (s != null && s.getState() == PlaybackState.STATE_PAUSED) {
             handler.postDelayed(expire, Math.max(1000, PAUSED_KEEP_MS - pausedFor(c, s) + 500));
