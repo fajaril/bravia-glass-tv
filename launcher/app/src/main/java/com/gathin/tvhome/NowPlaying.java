@@ -11,6 +11,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.media.MediaMetadata;
 import android.media.session.MediaController;
+import android.media.session.MediaSession;
 import android.media.session.MediaSessionManager;
 import android.media.session.PlaybackState;
 import android.os.Handler;
@@ -32,7 +33,8 @@ import java.util.Locale;
  * Now Playing on Home: when music plays in another app (Spotify, YouTube Music…), a small card at the
  * top of the shelf shows the song, the artist and the cover, with previous, play/pause and next. Up from
  * the dock reaches it. It listens only while Home is on screen, and shows nothing until the TV has
- * allowed {@link MediaAccess}; a stopped or closed player takes the card away.
+ * allowed {@link MediaAccess}. A stopped or closed player takes the card away, and so does five minutes
+ * of pause: Spotify keeps a paused player open for hours, which left the card on Home long after.
  */
 final class NowPlaying {
     private final Activity a;
@@ -46,13 +48,22 @@ final class NowPlaying {
     private MediaSessionManager msm;
     private MediaController current;
     private boolean listening;
+    /** How long a paused player keeps its card. */
+    private static final long PAUSED_KEEP_MS = 5 * 60 * 1000L;
+    /** When a paused player was first seen paused, for players that give no time of their own. */
+    private static final java.util.Map<Object, Long> pausedSeen = new java.util.HashMap<>();
+    private final Runnable expire = () -> pick(null);
 
     private final MediaSessionManager.OnActiveSessionsChangedListener sessions = list -> pick(list);
+    /**
+     * Every player is watched, not only the one on the card: a player hidden after its pause must bring
+     * the card back the moment it plays again, and that change does not reorder the session list.
+     */
+    private final java.util.Map<MediaSession.Token, MediaController> watched = new java.util.HashMap<>();
     private final MediaController.Callback callback = new MediaController.Callback() {
         @Override
         public void onPlaybackStateChanged(PlaybackState state) {
-            if (!playable(current)) pick(null);
-            else render();
+            pick(null);
         }
 
         @Override
@@ -149,6 +160,8 @@ final class NowPlaying {
     void stop() {
         if (!listening) return;
         listening = false;
+        handler.removeCallbacks(expire);
+        watch(null);
         try {
             msm.removeOnActiveSessionsChangedListener(sessions);
         } catch (Exception ignored) {
@@ -174,6 +187,7 @@ final class NowPlaying {
             follow(null);
             return;
         }
+        watch(list);
         MediaController best = null;
         for (MediaController c : list) {
             if (c.getPackageName().equals(a.getPackageName()) || !playable(c)) continue;
@@ -187,27 +201,60 @@ final class NowPlaying {
         follow(best);
     }
 
-    /** Playing, buffering or paused, with something to name. */
+    /** Playing, buffering, or paused for less than five minutes, with something to name. */
     private static boolean playable(MediaController c) {
         if (c == null) return false;
         PlaybackState s = c.getPlaybackState();
         MediaMetadata m = c.getMetadata();
         if (s == null || m == null || TextUtils.isEmpty(titleOf(m))) return false;
         int st = s.getState();
-        return st == PlaybackState.STATE_PLAYING || st == PlaybackState.STATE_PAUSED
+        if (st == PlaybackState.STATE_PAUSED) return pausedFor(c, s) < PAUSED_KEEP_MS;
+        pausedSeen.remove(c.getSessionToken());
+        return st == PlaybackState.STATE_PLAYING
                 || st == PlaybackState.STATE_BUFFERING || st == PlaybackState.STATE_SKIPPING_TO_NEXT
                 || st == PlaybackState.STATE_SKIPPING_TO_PREVIOUS || st == PlaybackState.STATE_CONNECTING;
     }
 
+    /**
+     * How long it has been paused: from the player's own last update (the moment it paused), or else
+     * from when Home first saw it paused.
+     */
+    private static long pausedFor(MediaController c, PlaybackState s) {
+        long now = android.os.SystemClock.elapsedRealtime();
+        long at = s.getLastPositionUpdateTime();
+        if (at <= 0 || at > now) {
+            Long seen = pausedSeen.get(c.getSessionToken());
+            if (seen == null) pausedSeen.put(c.getSessionToken(), seen = now);
+            at = seen;
+        }
+        return now - at;
+    }
+
+    /** Keeps a callback on exactly the players in {@code list}; null lets them all go. */
+    private void watch(List<MediaController> list) {
+        java.util.Set<MediaSession.Token> keep = new java.util.HashSet<>();
+        if (list != null) {
+            for (MediaController c : list) {
+                if (c.getPackageName().equals(a.getPackageName())) continue;
+                keep.add(c.getSessionToken());
+                if (!watched.containsKey(c.getSessionToken())) {
+                    c.registerCallback(callback, handler);
+                    watched.put(c.getSessionToken(), c);
+                }
+            }
+        }
+        java.util.Iterator<java.util.Map.Entry<MediaSession.Token, MediaController>> it = watched.entrySet().iterator();
+        while (it.hasNext()) {
+            java.util.Map.Entry<MediaSession.Token, MediaController> e = it.next();
+            if (!keep.contains(e.getKey())) {
+                e.getValue().unregisterCallback(callback);
+                it.remove();
+            }
+        }
+    }
+
     private void follow(MediaController c) {
-        if (current != null && (c == null || !c.getSessionToken().equals(current.getSessionToken()))) {
-            current.unregisterCallback(callback);
-            current = null;
-        }
-        if (c != null && current == null) {
-            current = c;
-            current.registerCallback(callback, handler);
-        }
+        current = c;
         if (current == null) hide();
         else render();
     }
@@ -246,6 +293,11 @@ final class NowPlaying {
         next.setVisibility((actions & PlaybackState.ACTION_SKIP_TO_NEXT) != 0 ? View.VISIBLE : View.GONE);
         setArt(m);
         card.setVisibility(View.VISIBLE);
+        // Paused: the card goes by itself when the five minutes are up.
+        handler.removeCallbacks(expire);
+        if (s != null && s.getState() == PlaybackState.STATE_PAUSED) {
+            handler.postDelayed(expire, Math.max(1000, PAUSED_KEEP_MS - pausedFor(c, s) + 500));
+        }
     }
 
     /** The cover, shrunk to the card's size so a large picture is not kept in memory. */
@@ -265,6 +317,7 @@ final class NowPlaying {
     }
 
     private void hide() {
+        handler.removeCallbacks(expire);
         boolean hadFocus = card.hasFocus();
         card.setVisibility(View.GONE);
         art.setImageDrawable(null);
