@@ -33,8 +33,9 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Two tabs. Overview: the TV's memory, storage and network at a glance, refreshed every two seconds, with
- * a button that closes apps idling in the background to give memory back. Network: a check of the home
+ * Three tabs. Overview: the TV's memory, storage and network at a glance, refreshed every two seconds, with
+ * a button that closes apps idling in the background to give memory back. Apps: which apps hold the
+ * memory, with Restart, Close and App info for each (through the TV's debugging shell). Network: a check of the home
  * network and the internet line (router, internet, DNS, download speed, streaming services) that says in
  * plain words where a lag comes from. Only the Network check goes online, and only while it runs.
  */
@@ -54,8 +55,9 @@ public class MainActivity extends Activity {
     private Ring ramRing, diskRing;
     private TextView ramBig, ramSub, diskBig, diskSub, freeNote, info, infoValues;
     private TextView freeButton;
-    private TextView tabOverview, tabNetwork;
+    private TextView tabOverview, tabApps, tabNetwork;
     private View overviewPage;
+    private AppsPage appsPage;
     private NetworkPage networkPage;
 
     /** Left for another app or Home: close completely, so the TV has the memory back at once. */
@@ -87,11 +89,14 @@ public class MainActivity extends Activity {
         head.setGravity(Gravity.CENTER_VERTICAL);
         head.addView(text("TV Status", 34, 0xFFFFFFFF, 500), weight());
         tabOverview = tab("Overview");
+        tabApps = tab("Apps");
         tabNetwork = tab("Network");
         head.addView(tabOverview);
-        LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        tlp.leftMargin = dp(10);
-        head.addView(tabNetwork, tlp);
+        for (TextView t : new TextView[]{tabApps, tabNetwork}) {
+            LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            tlp.leftMargin = dp(10);
+            head.addView(t, tlp);
+        }
         page.addView(head);
         TextView model = text(Build.MANUFACTURER.toUpperCase(Locale.ROOT) + " " + Build.MODEL + "  ·  ANDROID " + Build.VERSION.RELEASE,
                 13, MUTE, 500);
@@ -104,9 +109,12 @@ public class MainActivity extends Activity {
         LinearLayout overview = new LinearLayout(this);
         overview.setOrientation(LinearLayout.VERTICAL);
         overviewPage = overview;
+        appsPage = new AppsPage(this);
+        appsPage.setVisibility(View.GONE);
         networkPage = new NetworkPage(this);
         networkPage.setVisibility(View.GONE);
         pages.addView(overview);
+        pages.addView(appsPage);
         pages.addView(networkPage);
         page.addView(pages);
 
@@ -156,31 +164,44 @@ public class MainActivity extends Activity {
         overview.addView(box, ilp);
 
         // Up from a page reaches the tabs; selecting a tab shows its page, Down goes back into it.
-        freeButton.setId(View.generateViewId());
-        networkPage.button.setId(View.generateViewId());
-        tabOverview.setId(View.generateViewId());
-        tabNetwork.setId(View.generateViewId());
+        for (View v : new View[]{freeButton, networkPage.button, appsPage.refresh, tabOverview, tabApps, tabNetwork}) {
+            v.setId(View.generateViewId());
+        }
         freeButton.setNextFocusUpId(tabOverview.getId());
         networkPage.button.setNextFocusUpId(tabNetwork.getId());
+        appsPage.refresh.setNextFocusUpId(tabApps.getId());
         tabOverview.setNextFocusDownId(freeButton.getId());
+        tabApps.setNextFocusDownId(appsPage.refresh.getId());
         tabNetwork.setNextFocusDownId(networkPage.button.getId());
-        tabOverview.setOnFocusChangeListener((v, has) -> { if (has) show(false); });
-        tabNetwork.setOnFocusChangeListener((v, has) -> { if (has) show(true); });
+        tabOverview.setOnFocusChangeListener((v, has) -> { if (has) show(0); });
+        tabApps.setOnFocusChangeListener((v, has) -> { if (has) show(1); });
+        tabNetwork.setOnFocusChangeListener((v, has) -> { if (has) show(2); });
         tabOverview.setOnClickListener(v -> freeButton.requestFocus());
+        tabApps.setOnClickListener(v -> findViewById(tabApps.getNextFocusDownId()).requestFocus());
         tabNetwork.setOnClickListener(v -> networkPage.button.requestFocus());
 
         setContentView(page);
-        show(false);
+        show(0);
         freeButton.requestFocus();
     }
 
-    /** Shows the Network page (and starts its check the first time) or the Overview. */
-    private void show(boolean network) {
-        overviewPage.setVisibility(network ? View.GONE : View.VISIBLE);
-        networkPage.setVisibility(network ? View.VISIBLE : View.GONE);
-        tabOverview.setSelected(!network);
-        tabNetwork.setSelected(network);
-        if (network) networkPage.runOnce();
+    /** Shows tab {@code i} (0 Overview, 1 Apps, 2 Network); Apps and Network start their check the first time. */
+    private void show(int i) {
+        overviewPage.setVisibility(i == 0 ? View.VISIBLE : View.GONE);
+        appsPage.setVisibility(i == 1 ? View.VISIBLE : View.GONE);
+        networkPage.setVisibility(i == 2 ? View.VISIBLE : View.GONE);
+        tabOverview.setSelected(i == 0);
+        tabApps.setSelected(i == 1);
+        tabNetwork.setSelected(i == 2);
+        if (i == 1) appsPage.runOnce();
+        if (i == 2) networkPage.runOnce();
+    }
+
+    /** The Apps list's first row: Down from the Apps tab lands on it, Up from it goes back to the tab. */
+    void linkDown(View first) {
+        if (first.getId() == View.NO_ID) first.setId(View.generateViewId());
+        tabApps.setNextFocusDownId(first.getId());
+        first.setNextFocusUpId(tabApps.getId());
     }
 
     /** A tab: a pill, white when selected, with a ring when it has the focus. */

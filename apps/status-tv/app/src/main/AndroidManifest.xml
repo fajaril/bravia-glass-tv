@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- The Apps tab: the names of the apps holding memory (sideloaded, never published). -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <!-- The installed apps, for Free up memory (Android 11+ package visibility). -->
     <queries>
         <intent>
