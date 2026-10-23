@@ -1,121 +1,108 @@
-# Glass TV
+# BRAVIA Glass TV
 
-**Make your Android TV or Google TV fast and ad-free again: strip out the bloat and ads, free up memory,
-and come home to just your apps, with a new place to visit behind them every week.**
+An Apple TV–style home screen for a Sony BRAVIA (Google TV), set up for a home in Melaka, Malaysia, plus
+six small companion apps: Weather, Quran, Quotes, TV Status, Doa Harian and Al-Ma'thurat.
 
-Glass TV debloats any Android TV or Google TV over Wi-Fi, with no root and nothing that can't be undone, then
-swaps the ad-filled home screen for a light one in frosted glass, with a new set of places behind your apps
-every week.
+It is built on [Glass TV](https://github.com/cocombee/glass-tv) by Gathin (MIT). The original project's
+README is kept as [GLASS-TV.md](GLASS-TV.md) and covers installing, debloating and themes in general.
+This repo adds the customisations below.
 
-<p>
-  <img src="docs/screenshots/promo-1-home.jpg" width="32%" alt="Your TV, fast and ad-free again: the TV behind on the left, the app grid behind on the right, Home over Mount Sneffels in front">
-  <img src="docs/screenshots/promo-2-features.jpg" width="32%" alt="Looks like Apple, runs on Android: glass, Inputs, a place a week, your own app order, no ads">
-  <img src="docs/screenshots/promo-3-clock.jpg" width="32%" alt="Ads off, time on: the clock screensaver">
-</p>
+![Before and after](showcase/00-before-and-after.jpg)
 
-## What you get
+Tested on a Sony BRAVIA VU3 (KD-65X75K), Google TV / Android TV 14, over Ethernet.
 
-- **Keeps itself clean.** Every 15 days, while Home sits idle, the TV clears its app caches, where the Play
-  Store leaves gigabytes of download leftovers that can make apps open to a blank screen. No computer needed,
-  sign-ins and app data are never touched; the TV asks once to allow it.
-- **Glass, like Apple's.** The dock's tray, the top-bar buttons and the menus show the picture behind them
-  softened, with a shine along their edges. Android 10 has no live blur, so the picture is blurred once each
-  time it changes and the glass draws its patch of it.
-- **One selection that glides.** Between apps it is a pane of glass with the app's shadow under it; on the top
-  bar and in the menus it is dark. It glides and changes shape from one to the next, never jumps.
-- **Places to visit that renew themselves.** Once a week the TV takes the pictures Bing has shown on its home
-  page over the past days — landmarks, landscapes, wildlife — deletes last week's and rotates through them,
-  dimmed so the clock and tiles stay readable. The shelf above the dock names each one, its country and a few
-  lines about it. Pictures with people in them are skipped: by the words in their caption, and by Android's
-  own face detector on the TV. No key, no account, nothing to set up.
-- **Every app tints the room.** The glow behind Home, and the glass with it, blends to the colour of whichever
-  app is selected.
-- **Arrange your apps from the remote.** Hold OK on an app for a glass menu with **Move** and **App info**.
-  Move picks the app up: it wiggles, the arrows carry it (into or out of the dock too) and the other apps
-  slide aside; OK puts it down. The order is kept, and apps installed later join at the end.
-- **An Inputs menu in glass.** The selection glides out of the Inputs button into the list of HDMI and AV
-  inputs, and Up from the top of the list glides it back.
-- **Comes back as you left it.** Back from an app, the app you left is still selected; pressing Home on Home
-  goes to the first app. When Android has closed Home to free memory, it comes back whole in one frame,
-  with no black screen and no half-built dock.
-- **A clock screensaver.** A grey analog dial with a yellow-orange second hand that ticks, the time and
-  date beneath, drifting a little each minute so nothing burns in.
-- **Rows feather out under the top bar** instead of being cut off when you scroll, and the Wi-Fi / Ethernet
-  button can be hidden (`show_network_pill`).
-- **Rotating wallpapers of your own** instead, with `"places": false`: put pictures in a theme's `wallpapers/`
-  folder and choose how often they change, down to every 5 seconds. Each picture is decoded in the background
-  and cross-faded.
+## The home screen
 
 | | |
 |---|---|
-| ![Home with Mount Sneffels behind the apps, its name, country and story above the glass dock](docs/screenshots/home.jpg) | ![The app grid scrolled down over the Chauvet cave, rows feathering out under the top bar](docs/screenshots/grid.jpg) |
-| *Home, with this week's place* | *Every app, feathering out under the top bar* |
-| ![The glass Inputs menu with HDMI 1 selected](docs/screenshots/inputs.jpg) | ![The clock screensaver: a grey analog dial, the time and the date](docs/screenshots/clock.jpg) |
-| *Inputs, in glass* | *The clock screensaver* |
+| ![Home](showcase/02-after-glass-tv-home.jpg) | ![Weather and API](showcase/03-weather-and-API-under-the-clock.jpg) |
+| ![Daily ayat](showcase/09-daily-ayat-malay.jpg) | ![Tiles](showcase/23-restyled-tiles-1.jpg) |
 
-Still light: on a Xiaomi Mi TV with 1.8 GB of RAM the launcher uses about 80–100 MB and stays there over hours
-of use, one wallpaper is in memory at a time, the week's places take about 2 MB of storage, and nothing runs
-while you are inside an app.
+- **Waktu Solat**: today's prayer times from JAKIM e-Solat (zone `MLK01`), with the next prayer
+  highlighted and the Hijri date.
+- **Daily ayat**: one of 52 short verses a day above the prayer times, in Uthmani script with Malay
+  (Basmeih) or English (Saheeh International) from Quran.com.
+- **Weather and air quality** under the clock: Open-Meteo weather and the official Malaysian API
+  (Indeks Pencemar Udara) from the Department of Environment's APIMS feed. Select it to open the Weather app.
+- **Wallpapers**: Bing (a rolling 60-day pool from the US, UK, Canada, Australia and India editions),
+  Wikimedia Picture of the Day, Nature & Wildlife, NASA Image of the Day, Smithsonian Open Access art, and
+  Unsplash (your own key, typed on the TV). It also lets you set how often the wallpaper changes, the text size and the place info.
+- **Round top buttons** that expand with their name when selected.
+- **App menu** (hold OK on an app): Move, Update, tvOS-style or the app's own tile, Hide from Home,
+  App info, Hidden apps.
+- **tvOS-style tiles** for apps whose banners are plain: a gradient with the app's own icon, a wordmark
+  or a vector symbol.
+- **Lighter on memory**: a smaller glass blur, icons loaded at the screen's density, no colour-emoji font,
+  and companion apps that close completely when you leave them.
 
-## Setting it up
+Most of the code is in `launcher/app/src/main/java/com/gathin/tvhome/`: `PrayerTimes.java`,
+`WeeklyAyah.java`, `HomeWeather.java`, `PlaceWallpapers.java`, `AppAdapter.java` (tile tables `TVOS`,
+`WORDMARK`, `GLYPHS`) and `MainActivity.java`. The settings for this TV are in
+[`themes/my-tv/config.json`](themes/my-tv/config.json).
 
-**Using an AI coding agent** (Claude Code, Codex, Cursor, Copilot…)? Point it at this repository and ask it to
-set up your TV. [AGENTS.md](AGENTS.md) tells any agent, even a small model, how to do it safely on any Android TV or Google
-TV: it first works out which Glass TV your TV can run (the Android launcher, the LG webOS app, or neither on
-Samsung and Roku), then
-asks before each change, backs up first, never uninstalls, and checks each step with you as it goes.
+## Companion apps
 
-The full step-by-step guide for debloating and installing is in
-[docs/CLEANYOURTV-README.md](docs/CLEANYOURTV-README.md), and [PROMPT.md](PROMPT.md) lets a coding assistant do
-it for you. In short:
+Each one is a plain Java Android TV app in [`apps/`](apps). Each gets a card on the Glass TV home screen.
+
+| App | Package | What it does | Sources |
+|---|---|---|---|
+| [Weather](apps/weather-tv) | `com.glasstv.weather` | Melaka weather, 12-hour and 7-day forecast, API, and a dashboard of all 16 states | Open-Meteo, DOE APIMS |
+| [Quran](apps/quran-tv) | `com.glasstv.quran` | 114 surahs, Malay / English translation, Alafasy recitation, offline once opened | Quran.com API v4 |
+| [Quotes](apps/quotes-tv) | `com.glasstv.quotes` | A quote a day: hadith, the scholars, wisdom and peribahasa, with favourites. Works offline | Built-in `quotes.json` |
+| [TV Status](apps/status-tv) | `com.glasstv.status` | Memory and storage rings, network, uptime, and "Free up memory" | The TV itself |
+| [Doa Harian](apps/doa-tv) | `com.glasstv.doa` | Daily duas in 12 groups, Arabic, English and recitation | Hisnul Muslim |
+| [Al-Ma'thurat](apps/mathurat-tv) | `com.glasstv.mathurat` | Wazifah Sughra for the morning and the evening, recited line by line | Quran.com, Hisnul Muslim |
+
+| | |
+|---|---|
+| ![Weather](showcase/12-weather-app-melaka.jpg) | ![Malaysia API](showcase/13-weather-malaysia-air-quality-dashboard.jpg) |
+| ![Quran](showcase/16-quran-reading-with-recitation.jpg) | ![Quotes](showcase/17-quotes-peribahasa.jpg) |
+| ![TV Status](showcase/27-tv-status-app.jpg) | ![Doa Harian](showcase/29-doa-harian-list.jpg) |
+| ![Al-Ma'thurat](showcase/31-al-mathurat-pagi-petang.jpg) | ![Al-Ma'thurat Petang](showcase/33-al-mathurat-petang-zikir.jpg) |
+
+Notes on the religious text:
+- Nothing is typed by hand. Verses, translations and recitation come from Quran.com, and duas and
+  adhkar from Hisnul Muslim (hisnmuslim.com).
+- Hisnul Muslim has no Malay, so Doa Harian and the adhkar in Al-Ma'thurat are Arabic and English only.
+- Hisnul Muslim gives only the phrases that change in the evening. So Al-Ma'thurat's Petang shows the morning
+  text with those phrases underneath, and turns off that zikir's (morning) recitation.
+- The closing doa rabitah is not included, because neither source has it.
+
+## Building
+
+You need JDK 17 and the Android SDK (platform 34). Every app is signed with your debug key, because they are
+sideloaded, not published.
 
 ```bash
-python3 -m venv tools/venv && tools/venv/bin/pip install -r tools/requirements.txt
-export TV_HOST=192.168.1.50                                   # your TV's IP address
-tools/disable.sh examples/<your tv>/debloat.txt               # debloat
-launcher/build-and-install.sh                                 # build the launcher and make it Home
-tools/theme.sh themes/<your theme>                            # push your settings and wallpapers
+export JAVA_HOME=/path/to/jdk-17 ANDROID_HOME=/path/to/android-sdk TV_HOST=192.168.1.x
+
+# The launcher (INPUT_KEY_SERVICE=1 turns the Input button service back on after a reinstall)
+INPUT_KEY_SERVICE=1 launcher/build-and-install.sh
+
+# The theme for this TV
+tools/theme.sh themes/my-tv
+
+# A companion app
+cd apps/weather-tv && ./gradlew assembleRelease
 ```
 
-Glass TV clears the TV's caches by itself every 15 days ([how](docs/cache-clean.md)). To clean several TVs
-from one computer instead, [`tools/cache-clean.sh`](docs/cache-clean.md) finds the TVs on your network and
-clears their caches, leaving sign-ins and app data untouched.
+Install a companion APK with `python tools/tv.py` (a small adb client in Python, see
+`tools/requirements.txt`) or with `adb install`. The first time a card is added, Glass TV asks on the TV
+whether to show it. You can also hold OK on Settings to manage the cards.
 
-## Which TVs work
+To undo everything, see "Undo" in [GLASS-TV.md](GLASS-TV.md). In short, `tools/restore.sh` brings back the
+Google TV home screen.
 
-Android TV and Google TV, Android 8 or newer, on the TV or on a box plugged into any TV.
-[docs/DEVICES.md](docs/DEVICES.md) lists every tested model and how far each was tested: end to end with
-Glass TV, with the original launcher, or debloat only, plus what is expected to work and what cannot.
+## Showcase
 
-## LG and Samsung TVs
+All the screenshots are in [`showcase/`](showcase), including three Apple-style posters
+(`poster-*.jpg`).
 
-LG TVs run webOS and Samsung TVs run Tizen; neither can run Android apps, and neither lets any app replace its
-home screen or the Home button. For the full Glass TV, plug in a Google TV or Android TV box (Chromecast with
-Google TV, Xiaomi Mi Box, NVIDIA Shield): the TV becomes the screen and Glass TV is Home. On LG, a version you
-open as an app is in preview in [webos/](webos/README.md).
+## Credits and licences
 
-## Places, or pictures of your own
-
-Places are on from the start. To change how often the picture changes, or to use your own pictures and keep
-the launcher offline, make a theme folder with a `config.json` like this and push it with `tools/theme.sh`:
-
-```json
-{
-  "places": false,
-  "wallpaper_seconds": 15,
-  "show_network_pill": false
-}
-```
-
-All keys are listed in [themes/README.md](themes/README.md). With `"places": false`, the launcher never goes
-online.
-
-## Credits and licence
-
-- Built on [CleanYourTV](https://github.com/Gathin23/cleanyourtv) © 2026 Gathin, MIT licence — see
-  [LICENSE](LICENSE). Its debloat lists, tools and launcher are the foundation of this project.
-- The Outfit typeface is under the SIL Open Font License (`launcher/FONT-LICENSE-OFL.txt`).
-- The Inputs icon is from Google's Material Icons (Apache 2.0).
-- Pictures of places and their captions are Bing's daily images (Microsoft). The launcher fetches them on your
-  own TV; the promo pictures above show three of them.
-- Gotham, used in the promo pictures only, is a Hoefler&Co. typeface and is not part of this repository.
+- [Glass TV](https://github.com/cocombee/glass-tv) © Gathin, MIT ([LICENSE](LICENSE)). The changes and the
+  companion apps here are under the same licence.
+  Glass TV itself is based on [Clean Your TV](https://github.com/Gathin23/cleanyourtv) by Gathin (MIT).
+- Fonts: Outfit and Amiri Quran, SIL Open Font License (licence files next to the fonts).
+- Data: JAKIM e-Solat, Quran.com, Hisnul Muslim, Open-Meteo, Jabatan Alam Sekitar (APIMS), Bing,
+  Wikimedia Commons, NASA, Smithsonian Open Access and Unsplash. Each is used under its own terms.
