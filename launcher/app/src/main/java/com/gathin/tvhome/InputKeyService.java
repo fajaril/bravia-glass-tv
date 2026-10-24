@@ -44,6 +44,10 @@ public class InputKeyService extends AccessibilityService {
             "com.android.tv", "com.google.android.tv", "com.mediatek.wwtv.tvcenter", "com.sony.dtv.tvx",
             "com.sony.dtv.tvinput", "com.realtek.tv", "com.tcl.tv", "com.xiaomi.mitv.tvplayer"));
 
+    static String front() {
+        return front;
+    }
+
     static boolean liveTvInFront() {
         String f = front;
         return f != null && LIVE_TV.contains(f);

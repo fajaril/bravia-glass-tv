@@ -36,10 +36,15 @@ public class AzanActivity extends Activity {
     private AudioFocusRequest focus;
     private float density;
     private TextView hint;
+    /** True once the card has been on screen: until then a stop is the screensaver going, not the owner. */
+    private boolean shown;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Over the screensaver too: turn the screen on and come in front of it.
+        setShowWhenLocked(true);
+        setTurnScreenOn(true);
         density = getResources().getDisplayMetrics().density;
         int prayer = getIntent().getIntExtra("prayer", 4);
         Typeface outfit = getResources().getFont(R.font.outfit);
@@ -161,11 +166,20 @@ public class AzanActivity extends Activity {
         return super.onKeyDown(keyCode, event);
     }
 
-    /** Left in any way (Home, another app): the azan stops with it. */
+    @Override
+    protected void onResume() {
+        super.onResume();
+        shown = true;
+    }
+
+    /**
+     * Left in any way (Home, another app): the azan stops with it. Not before it has been shown, though:
+     * started while the screensaver was ending, it is stopped once on the way in, and must keep playing.
+     */
     @Override
     protected void onStop() {
         super.onStop();
-        if (!isChangingConfigurations()) finish();
+        if (shown && !isChangingConfigurations()) finish();
     }
 
     @Override

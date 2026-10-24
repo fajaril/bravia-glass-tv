@@ -83,9 +83,10 @@ final class Azan {
                 try {
                     // RTC, not RTC_WAKEUP: a TV in standby stays asleep; the receiver drops a late alarm.
                     am.setExact(AlarmManager.RTC, when, pending(ctx, p, when, PendingIntent.FLAG_UPDATE_CURRENT));
-                    Log.i(TAG, "next azan: " + PrayerTimes.NAMES[p] + " at " + at.getTime());
+                    note(ctx, "next azan: " + PrayerTimes.NAMES[p] + " at " + String.format(java.util.Locale.ROOT, "%02d:%02d",
+                            times.minutes[p] / 60, times.minutes[p] % 60) + (d == 1 ? " tomorrow" : ""));
                 } catch (SecurityException e) {
-                    Log.w(TAG, "exact alarms not allowed: " + e.getMessage());
+                    note(ctx, "exact alarms not allowed: " + e.getMessage());
                 }
                 return;
             }
@@ -134,6 +135,28 @@ final class Azan {
                 part.delete();
             }
         }, "azan-fetch").start();
+    }
+
+    /**
+     * Notes what the azan did (set, played, skipped and why) in azan-log.txt, keeping the last 40
+     * lines: logcat is gone after the TV sleeps, and "why was there no azan?" is asked the next day.
+     */
+    static synchronized void note(Context ctx, String line) {
+        Log.i(TAG, line);
+        // Next to the theme (Android/data/com.gathin.tvhome/files), where the computer can read it.
+        File dir = Config.dir(ctx);
+        File f = new File(dir != null ? dir : ctx.getFilesDir(), "azan-log.txt");
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        try {
+            if (f.isFile()) lines.addAll(java.nio.file.Files.readAllLines(f.toPath()));
+        } catch (Exception ignored) {
+        }
+        lines.add(new java.text.SimpleDateFormat("MM-dd HH:mm:ss", java.util.Locale.ROOT).format(new java.util.Date()) + "  " + line);
+        while (lines.size() > 40) lines.remove(0);
+        try {
+            java.nio.file.Files.write(f.toPath(), lines);
+        } catch (Exception ignored) {
+        }
     }
 
     static SharedPreferences prefs(Context ctx) {
