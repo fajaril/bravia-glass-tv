@@ -6,6 +6,11 @@
 
     <!-- Weather and air quality from Open-Meteo; nothing else goes online. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Home's place from Glass TV's Location (same signing key only). -->
+    <uses-permission android:name="com.gathin.tvhome.permission.READ_LOCATION" />
+    <queries>
+        <package android:name="com.gathin.tvhome" />
+    </queries>
 
     <application
         android:label="@string/app_name"

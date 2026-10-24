@@ -25,10 +25,13 @@ Tested on a Sony BRAVIA VU3 (KD-65X75K), Google TV / Android TV 14, over Etherne
 | | |
 |---|---|
 | ![Home](showcase/02-after-glass-tv-home.jpg) | ![Weather and API](showcase/03-weather-and-API-under-the-clock.jpg) |
-| ![Now Playing](showcase/40-now-playing-on-home.jpg) | |
+| ![Now Playing](showcase/40-now-playing-on-home.jpg) | ![Location](showcase/43-location-screen.jpg) |
 | ![Daily ayat](showcase/09-daily-ayat-malay.jpg) | ![Tiles](showcase/23-restyled-tiles-1.jpg) |
 
-- **Waktu Solat**: today's prayer times from JAKIM e-Solat (zone `MLK01`), with the next prayer
+- **Location, set on the TV**: Wallpaper → Location, text & ayat → **Location**. Pick the state, then the
+  JAKIM zone (all 60, each with its main town and districts). Waktu Solat, the weather line and the Weather
+  app follow it at once. A new TV with no zone in its theme opens this screen by itself on the first start.
+- **Waktu Solat**: today's prayer times from JAKIM e-Solat for the chosen zone, with the next prayer
   highlighted and the Hijri date.
 - **Daily ayat**: one of 52 short verses a day above the prayer times, in Uthmani script with Malay
   (Basmeih) or English (Saheeh International) from Quran.com. It can be hidden from the Wallpaper menu → Text & ayat → Ayat of the day.
@@ -60,7 +63,7 @@ Each one is a plain Java Android TV app in [`apps/`](apps). Each gets a card on 
 
 | App | Package | What it does | Sources |
 |---|---|---|---|
-| [Weather](apps/weather-tv) | `com.glasstv.weather` | Melaka weather, 12-hour and 7-day forecast, API, and a dashboard of all 16 states | Open-Meteo, DOE APIMS |
+| [Weather](apps/weather-tv) | `com.glasstv.weather` | The chosen town's weather, 12-hour and 7-day forecast, API, and a dashboard of all 16 states | Open-Meteo, DOE APIMS |
 | [Quran](apps/quran-tv) | `com.glasstv.quran` | 114 surahs, Malay / English translation, Alafasy recitation, offline once opened | Quran.com API v4 |
 | [Quotes](apps/quotes-tv) | `com.glasstv.quotes` | A quote a day: hadith, the scholars, wisdom and peribahasa, with favourites. Works offline | Built-in `quotes.json` |
 | [TV Status](apps/status-tv) | `com.glasstv.status` | Memory and storage rings, uptime, "Free up memory" and "Restart TV" (two presses); an Apps tab with the memory each app uses and Restart / Close / App info (through the TV's own debugging service, allowed once on the TV); and a Network tab that checks the router, internet line, DNS, download speed and streaming services, then says where a lag comes from | The TV itself, Cloudflare speed test |
@@ -69,7 +72,7 @@ Each one is a plain Java Android TV app in [`apps/`](apps). Each gets a card on 
 
 | | |
 |---|---|
-| ![Weather](showcase/12-weather-app-melaka.jpg) | ![Malaysia API](showcase/13-weather-malaysia-air-quality-dashboard.jpg) |
+| ![Weather](showcase/44-weather-follows-location.jpg) | ![Malaysia API](showcase/13-weather-malaysia-air-quality-dashboard.jpg) |
 | ![Quran](showcase/16-quran-reading-with-recitation.jpg) | ![Quotes](showcase/17-quotes-peribahasa.jpg) |
 | ![TV Status](showcase/27-tv-status-app.jpg) | ![TV Status network](showcase/35-tv-status-network-tab.jpg) |
 | ![TV Status apps](showcase/37-tv-status-apps-memory.jpg) | ![TV Status restart](showcase/38-tv-status-apps-restart-close.jpg) |
@@ -107,24 +110,22 @@ The full step-by-step guide (connecting, backing up, switching off the TV's extr
 [GLASS-TV.md](GLASS-TV.md). [AGENTS.md](AGENTS.md) is the same guide written for an AI coding assistant
 (Claude Code and others): open this folder in one and ask it to set up Glass TV on your TV.
 
-### Make it yours before installing
+### Make it yours
 
-These are set for a home in Melaka; change them for yours.
-
-1. **Theme** — copy `themes/my-tv/` to a new folder and edit its `config.json`:
+1. **Location** — nothing to edit: after installing, set it on the TV (Wallpaper → Location, text & ayat →
+   Location). On a new TV the Location screen opens by itself on the first start. Waktu Solat, the weather
+   line and the Weather app follow it. (The air-quality reading is from Malaysia's Department of Environment
+   and only shows within about 80 km of one of its stations.)
+2. **Theme** — copy `themes/my-tv/` to a new folder and edit its `config.json`:
    - `dock_apps`: the apps in the dock, then the grid rows, in order (package names; list yours with
      `tools/tv.py 'pm list packages -3'`). Leave it short if you would rather arrange the apps on the TV.
    - `hidden_apps`: apps to leave off Home.
-   - `prayer_zone`: your JAKIM e-Solat zone (for example `WLY01` Kuala Lumpur, `SGR01` Selangor, `JHR02`
-     Johor Bahru; the list is on [e-solat.gov.my](https://www.e-solat.gov.my)). Outside Malaysia, set it to
-     `""`: the prayer times and the ayat of the day are not shown.
-   - `weather_lat`, `weather_lon`: your location, for the weather line under the clock. The air-quality (API)
-     reading comes from the Malaysian Department of Environment and only shows within about 80 km of one of its stations.
+   - `prayer_zone`, `weather_lat`, `weather_lon`: only a default for before a location is chosen on the TV.
+     Remove `prayer_zone` (or set it to `""`) so a new TV asks for its location. Outside Malaysia, leave it
+     empty and skip the Location screen: there are no prayer times, and the weather line uses
+     `weather_lat`/`weather_lon`.
    - `unsplash_key`: leave it empty; an Unsplash key, if you have one, is typed on the TV
      (Wallpaper → Unsplash key), never written here.
-2. **Weather app** — it opens on Melaka. To open on your state, change `HOME` in
-   `apps/weather-tv/app/src/main/java/com/glasstv/weather/MainActivity.java` to your state's place in the
-   `STATES` list (0 Johor, 1 Kedah … 13 Kuala Lumpur, 14 Labuan, 15 Putrajaya). The app is about Malaysia; elsewhere, skip it.
 3. **Your TV's example list** — `examples/` has tested lists of what to switch off for many TVs. Use the one
    for your model, or let the guide help you make one.
 
@@ -145,7 +146,8 @@ tools/venv/bin/python -I tools/b64push.py apps/quran-tv/app/build/outputs/apk/re
 tools/venv/bin/python -I tools/tv.py 'pm install -r /data/local/tmp/app.apk; rm /data/local/tmp/app.apk'
 ```
 
-(`adb install` works too, if you have Android's platform tools.) The first time an app with a card is
+(`adb install` works too, if you have Android's platform tools.) Install Glass TV **before** the Weather
+app: the Weather app reads the location from Glass TV, and only apps built on the same computer may read it. The first time an app with a card is
 installed, Glass TV asks on the TV whether to show it; hold OK on Settings to manage the cards later.
 
 ### One-time permissions on the TV

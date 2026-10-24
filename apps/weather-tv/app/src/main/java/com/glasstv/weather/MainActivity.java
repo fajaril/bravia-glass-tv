@@ -27,22 +27,28 @@ import java.util.Date;
 import java.util.Locale;
 
 /**
- * Melaka's weather and air quality on one TV screen, from Open-Meteo (no key, no account) and the
- * official API from Jabatan Alam Sekitar. Right (or OK) opens a Malaysia page with every state's API;
- * OK on a state shows that state's weather, and Back walks back. Melaka's last answer is kept, so the
+ * Home's weather and air quality on one TV screen, from Open-Meteo (no key, no account) and the
+ * official API from Jabatan Alam Sekitar. Home is the place chosen on the TV in Glass TV (Location, read
+ * from its LocationProvider), else Melaka. Right (or OK) opens a Malaysia page with every state's API;
+ * OK on a state shows that state's weather, and Back walks back. Home's last answer is kept, so the
  * screen fills at once and only refreshes behind it; every ten minutes while it is open. Opened from
  * its Glass TV module card or its ordinary tile.
  */
 public class MainActivity extends Activity {
     private static final String TAG = "Weather";
     private static final String TZ = "Asia%2FKuala_Lumpur";
-    /** DOE's states (STATE_ID 1 to 16), with the capital whose weather stands for each. Melaka is home. */
+    /** DOE's states (STATE_ID 1 to 16), with the capital whose weather stands for each. */
     private static final String[] STATES = {"Johor", "Kedah", "Kelantan", "Melaka", "Negeri Sembilan", "Pahang",
             "Pulau Pinang", "Perak", "Perlis", "Selangor", "Terengganu", "Sabah", "Sarawak", "Kuala Lumpur", "Labuan", "Putrajaya"};
     private static final double[][] CAPITALS = {{1.4927, 103.7414}, {6.1248, 100.3678}, {6.1254, 102.2381}, {2.1896, 102.2501},
             {2.7297, 101.9381}, {3.8077, 103.3260}, {5.4141, 100.3288}, {4.5975, 101.0901}, {6.4414, 100.1986}, {3.0733, 101.5185},
             {5.3296, 103.1370}, {5.9804, 116.0735}, {1.5535, 110.3593}, {3.1390, 101.6869}, {5.2831, 115.2308}, {2.9264, 101.6964}};
-    private static final int HOME = 3;
+    /** Where Glass TV says the TV is (LocationProvider); read-only, for apps signed with the same key. */
+    private static final android.net.Uri LOCATION = android.net.Uri.parse("content://com.gathin.tvhome.location");
+    /** Home: its state (index into STATES), its name and the place its weather is for. Melaka until Glass TV says otherwise. */
+    private int home = 3;
+    private String homeName = "Melaka";
+    private double homeLat = CAPITALS[3][0], homeLon = CAPITALS[3][1];
     /** The Department of Environment's own APIMS feed: every station's hourly API, as the APIMS map shows it. */
     private static final String DOE = "https://eqms.doe.gov.my/api3/publicportalapims/mapcaqm";
     private static final long REFRESH_MS = 10 * 60_000L;
@@ -80,9 +86,9 @@ public class MainActivity extends Activity {
         }
     };
     private float density;
-    /** The state on the weather page (index into STATES); HOME unless one was opened from the Malaysia page. */
-    private int state = HOME;
-    private double lat = CAPITALS[HOME][0], lon = CAPITALS[HOME][1];
+    /** The state on the weather page (index into STATES); home unless one was opened from the Malaysia page. */
+    private int state = 3;
+    private double lat = CAPITALS[3][0], lon = CAPITALS[3][1];
     private boolean dashShown;
     /** The latest DOE reading, for the Malaysia page. */
     private String lastDoe;
@@ -92,6 +98,10 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         density = getResources().getDisplayMetrics().density;
+        readHome();
+        state = home;
+        lat = homeLat;
+        lon = homeLon;
         setPlace();
         findViewById(R.id.airCard).setBackground(glass(18));
         SharedPreferences last = getSharedPreferences("last", MODE_PRIVATE);
@@ -140,8 +150,33 @@ public class MainActivity extends Activity {
                 + "&current=us_aqi,pm2_5,pm10,ozone,nitrogen_dioxide,carbon_monoxide&timezone=" + TZ;
     }
 
+    /**
+     * Home from Glass TV's Location: the zone's main town, its coordinates and its state. When home has
+     * moved, the last forecast (another place's) is dropped rather than shown.
+     */
+    private void readHome() {
+        try (android.database.Cursor c = getContentResolver().query(LOCATION, null, null, null, null)) {
+            if (c == null || !c.moveToFirst()) return;
+            String code = c.getString(c.getColumnIndexOrThrow("code"));
+            String town = c.getString(c.getColumnIndexOrThrow("town"));
+            String st = c.getString(c.getColumnIndexOrThrow("state"));
+            homeLat = c.getDouble(c.getColumnIndexOrThrow("lat"));
+            homeLon = c.getDouble(c.getColumnIndexOrThrow("lon"));
+            if (town != null && !town.isEmpty()) homeName = town;
+            int index = "WLY02".equals(code) ? 14 : "Wilayah Persekutuan".equals(st) ? 13 : java.util.Arrays.asList(STATES).indexOf(st);
+            if (index >= 0) home = index;
+            SharedPreferences last = getSharedPreferences("last", MODE_PRIVATE);
+            String key = homeLat + "," + homeLon;
+            if (!key.equals(last.getString("home", key))) last.edit().remove("forecast").remove("air").remove("at").apply();
+            last.edit().putString("home", key).apply();
+        } catch (Exception e) {
+            // Glass TV not installed, or not allowed: home stays Melaka.
+        }
+    }
+
     private void setPlace() {
-        ((TextView) findViewById(R.id.place)).setText(STATES[state] + (state == HOME ? "      ▸  All states" : "      ◂  Back to all states"));
+        ((TextView) findViewById(R.id.place)).setText((state == home ? homeName : STATES[state])
+                + (state == home ? "      ▸  All states" : "      ◂  Back to all states"));
     }
 
     private void fetch() {
@@ -163,7 +198,7 @@ public class MainActivity extends Activity {
                 }
                 long at = System.currentTimeMillis();
                 // Only home is kept for the next start; another state is looked at, not lived in.
-                if (forState == HOME) {
+                if (forState == home) {
                     getSharedPreferences("last", MODE_PRIVATE).edit().putString("forecast", forecast)
                             .putString("air", air).putString("doe", doe).putLong("at", at).apply();
                 }
@@ -306,7 +341,7 @@ public class MainActivity extends Activity {
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (!dashShown && (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT || keyCode == KeyEvent.KEYCODE_DPAD_CENTER
-                || keyCode == KeyEvent.KEYCODE_ENTER || (state != HOME && keyCode == KeyEvent.KEYCODE_DPAD_LEFT))) {
+                || keyCode == KeyEvent.KEYCODE_ENTER || (state != home && keyCode == KeyEvent.KEYCODE_DPAD_LEFT))) {
             openDash();
             return true;
         }
@@ -315,8 +350,8 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (dashShown) openState(HOME);      // the Malaysia page backs out to Melaka
-        else if (state != HOME) openDash();  // another state backs out to the Malaysia page
+        if (dashShown) openState(home);      // the Malaysia page backs out to home
+        else if (state != home) openDash();  // another state backs out to the Malaysia page
         else super.onBackPressed();
     }
 
@@ -335,15 +370,15 @@ public class MainActivity extends Activity {
     private void openState(int index) {
         boolean changed = index != state;
         state = index;
-        lat = CAPITALS[index][0];
-        lon = CAPITALS[index][1];
+        lat = index == home ? homeLat : CAPITALS[index][0];
+        lon = index == home ? homeLon : CAPITALS[index][1];
         dashShown = false;
         findViewById(R.id.dash).setVisibility(View.GONE);
         findViewById(R.id.detail).setVisibility(View.VISIBLE);
         setPlace();
         if (changed) {
             SharedPreferences last = getSharedPreferences("last", MODE_PRIVATE);
-            if (index == HOME && last.getString("forecast", null) != null) {
+            if (index == home && last.getString("forecast", null) != null) {
                 show(last.getString("forecast", null), last.getString("air", null), lastDoe, last.getLong("at", 0));
             } else {
                 ((TextView) findViewById(R.id.nowTemp)).setText("–");
@@ -420,7 +455,7 @@ public class MainActivity extends Activity {
         c.setPadding(p, (int) (8 * density), p, (int) (8 * density));
         c.setFocusable(true);
         c.setTag("state" + index);
-        TextView name = text(STATES[index] + (index == HOME ? "  ⌂" : ""), 15, 0xFFFFFFFF, 500);
+        TextView name = text(STATES[index] + (index == home ? "  ⌂" : ""), 15, 0xFFFFFFFF, 500);
         name.setGravity(Gravity.START);
         c.addView(name);
         LinearLayout line = new LinearLayout(this);

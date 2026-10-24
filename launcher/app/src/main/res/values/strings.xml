@@ -64,7 +64,7 @@
     <string name="wallpaper_needs_key">Needs key</string>
     <string name="wallpaper_no_key">Add your Unsplash Access Key first.</string>
     <string name="wallpaper_every">Change every</string>
-    <string name="home_text">Text &amp; ayat</string>
+    <string name="home_text">Location, text &amp; ayat</string>
     <string name="shelf_text_size">Text size</string>
     <string name="shelf_extra_small">Extra small</string>
     <string name="shelf_small">Small</string>
@@ -74,6 +74,8 @@
     <string name="shelf_hide_all">Hide all</string>
     <string name="shelf_medium">Medium</string>
     <string name="shelf_large">Large</string>
+    <string name="location">Location</string>
+    <string name="location_none">Not set</string>
     <string name="ayah_of_the_day">Ayat of the day</string>
     <string name="ayah_show">Show</string>
     <string name="ayah_hide">Hidden</string>

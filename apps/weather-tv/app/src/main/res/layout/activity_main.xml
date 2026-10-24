@@ -287,7 +287,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="OK: weather for that state  ·  Back: Melaka  ·  API: Jabatan Alam Sekitar (APIMS), highest station shown per state"
+            android:text="OK: weather for that state  ·  Back: home  ·  API: Jabatan Alam Sekitar (APIMS), highest station shown per state"
             android:textColor="#80FFFFFF"
             android:textSize="11sp"
             android:fontFamily="@font/outfit" />

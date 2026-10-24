@@ -32,6 +32,11 @@
         <package android:name="com.xiaomi.mitv.settings" />
     </queries>
 
+    <!-- The TV's location, read by the companion apps (Weather) signed with the same key. -->
+    <permission
+        android:name="com.gathin.tvhome.permission.READ_LOCATION"
+        android:protectionLevel="signature" />
+
     <application
         android:label="@string/app_name"
         android:icon="@mipmap/ic_launcher"
@@ -108,6 +113,18 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/input_key_service" />
         </service>
+
+        <!-- Where the TV is: the JAKIM zone for Waktu Solat and the town for the weather. -->
+        <activity
+            android:name=".LocationActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.TvHome" />
+        <provider
+            android:name=".LocationProvider"
+            android:authorities="com.gathin.tvhome.location"
+            android:exported="true"
+            android:readPermission="com.gathin.tvhome.permission.READ_LOCATION" />
 
         <!-- Now Playing on Home: lets Home see the music app's controls; reads no notifications. -->
         <service

@@ -144,6 +144,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private final TextView[] prayerNames = new TextView[PrayerTimes.NAMES.length];
     private final TextView[] prayerClock = new TextView[PrayerTimes.NAMES.length];
     private String prayerZone = "";
+    /** The weather line's place: the zone chosen on the TV (Location), else the theme's coordinates. */
+    private double weatherLat = Double.NaN, weatherLon = Double.NaN;
     private boolean prayerRefreshRunning;
     /** The daily ayat above the prayer times; null when weekly_ayah is off. */
     private View ayahBlock;
@@ -335,9 +337,23 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroShelf.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, orr, ob) -> {
             if (heroBottom > 0) v.setY(heroBottom - v.getHeight());
         });
-        prayerZone = cfg.prayerZone;
+        // A location chosen on the TV wins over the theme; the Weather app reads it from LocationProvider.
+        Location.Zone place = Location.chosen(this);
+        prayerZone = place != null ? place.code : cfg.prayerZone;
+        weatherLat = place != null ? place.lat : cfg.weatherLat;
+        weatherLon = place != null ? place.lon : cfg.weatherLon;
+        if (!Double.isNaN(weatherLat) && !Double.isNaN(weatherLon)) {
+            Location.Zone named = place != null ? place : Location.byCode(prayerZone);
+            Location.publish(this, prayerZone, named != null ? named.town : "", named != null ? named.state : "",
+                    weatherLat, weatherLon);
+        }
         if (!prayerZone.isEmpty()) setUpPrayerPanel(usable);
-        if (!Double.isNaN(cfg.weatherLat) && !Double.isNaN(cfg.weatherLon)) {
+        // A new TV with no zone anywhere asks once where it is.
+        if (place == null && cfg.prayerZone.isEmpty() && !Location.asked(this)) {
+            Location.setAsked(this);
+            handler.postDelayed(() -> startActivity(new Intent(this, LocationActivity.class)), 1500);
+        }
+        if (!Double.isNaN(weatherLat) && !Double.isNaN(weatherLon)) {
             homeWeather = findViewById(R.id.homeWeather);
             homeWeather.setVisibility(View.VISIBLE);
             // OK on the weather line opens the Weather app; the selection glides onto it like a top button.
@@ -779,6 +795,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             registerReceiver(packageReceiver, packageFilter, Context.RECEIVER_NOT_EXPORTED);
         } else {
             registerReceiver(packageReceiver, packageFilter);
+        }
+        // Registered first: recreate() pauses Home, and pausing unregisters it.
+        // Back from the Location screen with a new place: build Home again for it (prayer panel,
+        // weather line and the ayat), and fetch the new place's weather rather than show the old one.
+        Location.Zone place = Location.chosen(this);
+        if (place != null && !place.code.equals(prayerZone)) {
+            HomeWeather.forget(this);
+            recreate();
+            return;
         }
         tilesReady = false;
         promptsPaused = false;
@@ -1536,7 +1561,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void updateHomeWeather() {
         if (homeWeather == null || homeWeatherRunning || !HomeWeather.due(this)) return;
         homeWeatherRunning = true;
-        final double la = config.weatherLat, lo = config.weatherLon;
+        final double la = weatherLat, lo = weatherLon;
         new Thread(() -> {
             HomeWeather.Line line = HomeWeather.refresh(getApplicationContext(), la, lo);
             handler.post(() -> {
@@ -2245,11 +2270,25 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         showMenu(panel, rows, btnWallpaper, width, false);
     }
 
-    /** Text size, Place info and the ayat's language, opened from the Wallpaper menu. */
+    /** Location, Text size, Place info and the ayat's options, opened from the Wallpaper menu. */
     private void showTextOptions() {
         if (openMenu != null) return;
         FrameLayout panel = (FrameLayout) getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
         LinearLayout rows = panel.findViewById(R.id.rows);
+        // Where the TV is: the JAKIM zone for Waktu Solat and the town for the weather.
+        View placeRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+        ((ImageView) placeRow.findViewById(R.id.icon)).setImageResource(R.drawable.ic_place);
+        ((TextView) placeRow.findViewById(R.id.title)).setText(R.string.location);
+        Location.Zone here = Location.chosen(this);
+        if (here == null) here = Location.byCode(prayerZone);
+        ((TextView) placeRow.findViewById(R.id.status)).setText(here != null ? here.town : getString(R.string.location_none));
+        placeRow.findViewById(R.id.dot).setVisibility(View.GONE);
+        final String zoneNow = prayerZone;
+        placeRow.setOnClickListener(v -> {
+            closeMenu(false);
+            startActivity(new Intent(this, LocationActivity.class).putExtra("zone", zoneNow));
+        });
+        rows.addView(placeRow);
         // The size of the place's name, country and description: OK steps Small, Medium, Large.
         View sizeRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
         ((ImageView) sizeRow.findViewById(R.id.icon)).setImageResource(R.drawable.ic_text_size);

@@ -42,6 +42,11 @@ final class HomeWeather {
 
     private HomeWeather() {}
 
+    /** Forgets the line, so a new location is fetched at once instead of the old place's weather showing. */
+    static void forget(Context ctx) {
+        prefs(ctx).edit().clear().apply();
+    }
+
     static boolean due(Context ctx) {
         return Math.abs(System.currentTimeMillis() - prefs(ctx).getLong("at", 0)) >= REFRESH_MS;
     }
