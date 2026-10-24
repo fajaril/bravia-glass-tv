@@ -3,9 +3,16 @@
 An Apple TV–style home screen for a Sony BRAVIA (Google TV), set up for a home in Melaka, Malaysia, plus
 six small companion apps: Weather, Quran, Quotes, TV Status, Doa Harian and Al-Ma'thurat.
 
-It is built on [Glass TV](https://github.com/cocombee/glass-tv) by Gathin (MIT). The original project's
-README is kept as [GLASS-TV.md](GLASS-TV.md) and covers installing, debloating and themes in general.
-This repo adds the customisations below.
+> **Credit to the original developers.** This is a personal adaptation, not an original project. The
+> home-screen launcher, the setup and install scripts, the debloat lists and the safeguards that put a TV
+> back as it was all come from **[Glass TV](https://github.com/cocombee/glass-tv)** by **cocombee**, which
+> is built on **[CleanYourTV](https://github.com/Gathin23/cleanyourtv)** by **Gathin**, with contributions
+> from about 70 other people (their commits are kept in this repo's history). Both are MIT-licensed; see
+> [LICENSE](LICENSE). We only adjusted it to our own preferences and added a few things for our home. If
+> you find it useful, please star and follow the original projects.
+
+The original project's README is kept as [GLASS-TV.md](GLASS-TV.md) and covers installing, debloating and
+themes in general. What this repo adds is below.
 
 ![Before and after](showcase/00-before-and-after.jpg)
 
@@ -160,9 +167,10 @@ All the screenshots are in [`showcase/`](showcase), including three Apple-style 
 
 ## Credits and licences
 
-- [Glass TV](https://github.com/cocombee/glass-tv) © Gathin, MIT ([LICENSE](LICENSE)). The changes and the
-  companion apps here are under the same licence.
-  Glass TV itself is based on [Clean Your TV](https://github.com/Gathin23/cleanyourtv) by Gathin (MIT).
+- **[Glass TV](https://github.com/cocombee/glass-tv)** by cocombee, built on
+  **[CleanYourTV](https://github.com/Gathin23/cleanyourtv)** © 2026 Gathin, MIT ([LICENSE](LICENSE)), with
+  contributions from about 70 others. The launcher, scripts, debloat lists and guides are theirs; this repo
+  only adjusts them and adds the companion apps, all under the same MIT licence.
 - Fonts: Outfit and Amiri Quran, SIL Open Font License (licence files next to the fonts).
 - Data: JAKIM e-Solat, Quran.com, Hisnul Muslim, Open-Meteo, Jabatan Alam Sekitar (APIMS), Bing,
   Wikimedia Commons, NASA, Smithsonian Open Access and Unsplash. Each is used under its own terms.
