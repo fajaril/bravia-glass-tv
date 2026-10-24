@@ -27,19 +27,20 @@ Tested on a Sony BRAVIA VU3 (KD-65X75K), Google TV / Android TV 14, over Etherne
 | ![Home](showcase/02-after-glass-tv-home.jpg) | ![Weather and API](showcase/03-weather-and-API-under-the-clock.jpg) |
 | ![Now Playing](showcase/40-now-playing-on-home.jpg) | ![Location](showcase/43-location-screen.jpg) |
 | ![Azan](showcase/45-azan-maghrib.jpg) | ![Azan options](showcase/46-azan-options.jpg) |
+| ![Home menu](showcase/47-home-menu.jpg) | ![Widgets](showcase/48-home-widgets.jpg) |
 | ![Daily ayat](showcase/09-daily-ayat-malay.jpg) | ![Tiles](showcase/23-restyled-tiles-1.jpg) |
 
-- **Location, set on the TV**: Wallpaper → Location, text & ayat → **Location**. Pick the state, then the
+- **Location, set on the TV**: Home → Widgets → **Location**. Pick the state, then the
   JAKIM zone (all 60, each with its main town and districts). Waktu Solat, the weather line and the Weather
   app follow it at once. A new TV with no zone in its theme opens this screen by itself on the first start.
-- **Azan at prayer time**: choose the prayers in Wallpaper → Location, text & ayat → **Azan** (Maghrib
+- **Azan at prayer time**: choose the prayers in Home → Widgets → **Azan** (Maghrib
   is on at first). While the TV is on, a floating glass card at the top comes over the app in front: video pauses,
   music pauses and resumes after; Back stops it. It never plays in standby or over Live TV / HDMI.
   The recording is the call to prayer at Masjid KLCC ([Internet Archive](https://archive.org/details/AzanZhurMasjidKlcc), CC0).
 - **Waktu Solat**: today's prayer times from JAKIM e-Solat for the chosen zone, with the next prayer
   highlighted and the Hijri date.
 - **Daily ayat**: one of 52 short verses a day above the prayer times, in Uthmani script with Malay
-  (Basmeih) or English (Saheeh International) from Quran.com. It can be hidden from the Wallpaper menu → Text & ayat → Ayat of the day.
+  (Basmeih) or English (Saheeh International) from Quran.com. It can be hidden from Home → Widgets → Ayat of the day.
 - **Weather and air quality** under the clock: Open-Meteo weather and the official Malaysian API
   (Indeks Pencemar Udara) from the Department of Environment's APIMS feed. Select it to open the Weather app.
 - **Wallpapers**: Bing (a rolling 60-day pool from the US, UK, Canada, Australia and India editions),
@@ -49,6 +50,9 @@ Tested on a Sony BRAVIA VU3 (KD-65X75K), Google TV / Android TV 14, over Etherne
   name shows the song and cover with previous / play-pause / next; Up from the dock reaches it. The ayat
   of the day steps aside while it shows.
 - **Round top buttons** that expand with their name when selected.
+- **One Home menu** (the first top button): **Widgets** › (Location, Azan, Ayat of the day, Ayat translation),
+  then the wallpaper: **Wallpaper source** › (Bing, Wikimedia, Nature & Wildlife, NASA, Smithsonian,
+  Unsplash), **Change every**, **Caption** › (Text size, Place info) and **Unsplash key**.
 - **App menu** (hold OK on an app): Move, Update, tvOS-style or the app's own tile, Hide from Home,
   App info, Hidden apps.
 - **Clear selection**: the selected app grows by 14% and lifts on a shadow, as on tvOS.
@@ -117,7 +121,7 @@ The full step-by-step guide (connecting, backing up, switching off the TV's extr
 
 ### Make it yours
 
-1. **Location** — nothing to edit: after installing, set it on the TV (Wallpaper → Location, text & ayat →
+1. **Location** — nothing to edit: after installing, set it on the TV (Home → Widgets →
    Location). On a new TV the Location screen opens by itself on the first start. Waktu Solat, the weather
    line and the Weather app follow it. (The air-quality reading is from Malaysia's Department of Environment
    and only shows within about 80 km of one of its stations.)
@@ -130,7 +134,7 @@ The full step-by-step guide (connecting, backing up, switching off the TV's extr
      empty and skip the Location screen: there are no prayer times, and the weather line uses
      `weather_lat`/`weather_lon`.
    - `unsplash_key`: leave it empty; an Unsplash key, if you have one, is typed on the TV
-     (Wallpaper → Unsplash key), never written here.
+     (Home → Unsplash key), never written here.
 3. **Your TV's example list** — `examples/` has tested lists of what to switch off for many TVs. Use the one
    for your model, or let the guide help you make one.
 

@@ -65,6 +65,10 @@
     <string name="wallpaper_no_key">Add your Unsplash Access Key first.</string>
     <string name="wallpaper_every">Change every</string>
     <string name="home_text">Location, text &amp; ayat</string>
+    <string name="home_menu">Home</string>
+    <string name="home_widgets">Widgets</string>
+    <string name="wallpaper_source">Wallpaper source</string>
+    <string name="wallpaper_caption">Caption</string>
     <string name="shelf_text_size">Text size</string>
     <string name="shelf_extra_small">Extra small</string>
     <string name="shelf_small">Small</string>

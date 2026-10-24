@@ -306,8 +306,8 @@
                 <TextView
                     android:id="@+id/btnWallpaper"
                     style="@style/TopRoundButton"
-                    android:contentDescription="@string/wallpaper"
-                    android:drawableStart="@drawable/ic_wallpaper"
+                    android:contentDescription="@string/home_menu"
+                    android:drawableStart="@drawable/ic_tune"
                     android:nextFocusDown="@+id/grid" />
 
                 <TextView

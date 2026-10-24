@@ -2197,7 +2197,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     /** The Wallpaper menu: one row per source, the one on screen marked; choosing another fetches it now. */
-    private void showWallpaperSources() {
+    /** Where the pictures come from: Bing, Wikimedia, Nature & Wildlife, NASA, Smithsonian, Unsplash. */
+    private void showWallpaperSourceOptions() {
         if (openMenu != null) return;
         FrameLayout panel = (FrameLayout) getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
         LinearLayout rows = panel.findViewById(R.id.rows);
@@ -2231,8 +2232,49 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             });
             rows.addView(row);
         }
-        // How often the picture changes: OK steps to the next speed, and the menu stays open to show it.
+        panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        int width = Math.max(Math.max(btnWallpaper.getWidth(), (int) (150 * density)), panel.getMeasuredWidth());
+        showMenu(panel, rows, btnWallpaper, width, false);
+    }
+
+    /**
+     * The Home menu (the first top button): Widgets (location, azan, ayat) one level down, then the
+     * wallpaper: where the pictures come from, how often they change, the caption, the Unsplash key.
+     */
+    private void showWallpaperSources() {
+        if (openMenu != null) return;
+        FrameLayout panel = (FrameLayout) getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
+        LinearLayout rows = panel.findViewById(R.id.rows);
+        Runnable close = () -> closeMenu(false);
+        // The widgets on Home: where the TV is (Waktu Solat, weather), the azan and the ayat of the day.
+        View widgetRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+        ((ImageView) widgetRow.findViewById(R.id.icon)).setImageResource(R.drawable.ic_widgets);
+        ((TextView) widgetRow.findViewById(R.id.title)).setText(R.string.home_widgets);
+        ((TextView) widgetRow.findViewById(R.id.status)).setText("\u203A");
+        widgetRow.findViewById(R.id.dot).setVisibility(View.GONE);
+        widgetRow.setOnClickListener(v -> {
+            close.run();
+            handler.post(() -> showTextOptions(true));
+        });
+        rows.addView(widgetRow);
         addSeparator(rows);
+        // Where the pictures come from, one level down; the row names the one showing.
+        int[] sourceNames = {R.string.wallpaper_bing, R.string.wallpaper_wikimedia, R.string.wallpaper_wiki_nature,
+                R.string.wallpaper_nasa, R.string.wallpaper_smithsonian, R.string.wallpaper_unsplash};
+        String current = PlaceWallpapers.source(this);
+        String currentName = "";
+        for (int i = 0; i < PlaceWallpapers.SOURCES.length; i++) if (PlaceWallpapers.SOURCES[i].equals(current)) currentName = getString(sourceNames[i]);
+        View sourceRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+        ((ImageView) sourceRow.findViewById(R.id.icon)).setImageResource(R.drawable.ic_wallpaper);
+        ((TextView) sourceRow.findViewById(R.id.title)).setText(R.string.wallpaper_source);
+        ((TextView) sourceRow.findViewById(R.id.status)).setText(currentName + "  \u203A");
+        sourceRow.findViewById(R.id.dot).setVisibility(View.GONE);
+        sourceRow.setOnClickListener(v -> {
+            close.run();
+            handler.post(this::showWallpaperSourceOptions);
+        });
+        rows.addView(sourceRow);
+        // How often the picture changes: OK steps to the next speed, and the menu stays open to show it.
         View speedRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
         ((ImageView) speedRow.findViewById(R.id.icon)).setImageResource(R.drawable.ic_timer);
         ((TextView) speedRow.findViewById(R.id.title)).setText(R.string.wallpaper_every);
@@ -2248,15 +2290,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             startWallpaperRotation();
         });
         rows.addView(speedRow);
-        // The place text and the ayat's language live one level down, so the menu fits on the screen.
+        // The caption over the picture (its place's name and description), one level down.
         View textRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
         ((ImageView) textRow.findViewById(R.id.icon)).setImageResource(R.drawable.ic_text_size);
-        ((TextView) textRow.findViewById(R.id.title)).setText(R.string.home_text);
+        ((TextView) textRow.findViewById(R.id.title)).setText(R.string.wallpaper_caption);
         ((TextView) textRow.findViewById(R.id.status)).setText("\u203A");
         textRow.findViewById(R.id.dot).setVisibility(View.GONE);
         textRow.setOnClickListener(v -> {
             close.run();
-            handler.post(this::showTextOptions);
+            handler.post(() -> showTextOptions(false));
         });
         rows.addView(textRow);
         // The key is typed here, on the TV, so no computer is needed to turn Unsplash on or change it.
@@ -2311,11 +2353,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         showMenu(panel, rows, btnWallpaper, width, false);
     }
 
-    /** Location, Text size, Place info and the ayat's options, opened from the Wallpaper menu. */
-    private void showTextOptions() {
+    /**
+     * A submenu of the Home menu: {@code widgets} gives Location, Azan, Ayat of the day and its translation;
+     * otherwise the caption over the picture: Text size and Place info.
+     */
+    private void showTextOptions(boolean widgets) {
         if (openMenu != null) return;
         FrameLayout panel = (FrameLayout) getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
         LinearLayout rows = panel.findViewById(R.id.rows);
+        if (widgets) {
         // Where the TV is: the JAKIM zone for Waktu Solat and the town for the weather.
         View placeRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
         ((ImageView) placeRow.findViewById(R.id.icon)).setImageResource(R.drawable.ic_place);
@@ -2343,41 +2389,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             });
             rows.addView(azanRow);
         }
-        // The size of the place's name, country and description: OK steps Small, Medium, Large.
-        View sizeRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
-        ((ImageView) sizeRow.findViewById(R.id.icon)).setImageResource(R.drawable.ic_text_size);
-        ((TextView) sizeRow.findViewById(R.id.title)).setText(R.string.shelf_text_size);
-        TextView sizeName = sizeRow.findViewById(R.id.status);
-        int[] sizeNames = {R.string.shelf_extra_small, R.string.shelf_small, R.string.shelf_medium, R.string.shelf_large};
-        int at = SHELF_DEFAULT;
-        for (int i = 0; i < SHELF_SCALES.length; i++) if (SHELF_SCALES[i] == shelfScale) at = i;
-        sizeName.setText(sizeNames[at]);
-        sizeRow.findViewById(R.id.dot).setVisibility(View.GONE);
-        sizeRow.setOnClickListener(v -> {
-            int now = SHELF_DEFAULT;
-            for (int i = 0; i < SHELF_SCALES.length; i++) if (SHELF_SCALES[i] == shelfScale) now = i;
-            int next = (now + 1) % SHELF_SCALES.length;
-            shelfScale = SHELF_SCALES[next];
-            getSharedPreferences("launch", MODE_PRIVATE).edit().putInt("shelf_size", next).apply();
-            sizeName.setText(sizeNames[next]);
-            applyShelfScale();
-        });
-        rows.addView(sizeRow);
-        // What the shelf shows, whatever the size: OK steps Show all, Name only, Hide all.
-        View descRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
-        ((ImageView) descRow.findViewById(R.id.icon)).setImageResource(R.drawable.ic_notes);
-        ((TextView) descRow.findViewById(R.id.title)).setText(R.string.shelf_place_info);
-        TextView descState = descRow.findViewById(R.id.status);
-        int[] modeNames = {R.string.shelf_show_all, R.string.shelf_name_only, R.string.shelf_hide_all};
-        descState.setText(modeNames[shelfMode]);
-        descRow.findViewById(R.id.dot).setVisibility(View.GONE);
-        descRow.setOnClickListener(v -> {
-            shelfMode = (shelfMode + 1) % modeNames.length;
-            getSharedPreferences("launch", MODE_PRIVATE).edit().putInt("shelf_mode", shelfMode).apply();
-            descState.setText(modeNames[shelfMode]);
-            applyShelfScale();
-        });
-        rows.addView(descRow);
         // The daily ayat itself: OK shows or hides it above the prayer times.
         if (ayahBlock != null) {
             View showRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
@@ -2413,6 +2424,43 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 showAyah(WeeklyAyah.last(this));
             });
             rows.addView(langRow);
+        }
+        } else {
+        // The size of the place's name, country and description: OK steps Small, Medium, Large.
+        View sizeRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+        ((ImageView) sizeRow.findViewById(R.id.icon)).setImageResource(R.drawable.ic_text_size);
+        ((TextView) sizeRow.findViewById(R.id.title)).setText(R.string.shelf_text_size);
+        TextView sizeName = sizeRow.findViewById(R.id.status);
+        int[] sizeNames = {R.string.shelf_extra_small, R.string.shelf_small, R.string.shelf_medium, R.string.shelf_large};
+        int at = SHELF_DEFAULT;
+        for (int i = 0; i < SHELF_SCALES.length; i++) if (SHELF_SCALES[i] == shelfScale) at = i;
+        sizeName.setText(sizeNames[at]);
+        sizeRow.findViewById(R.id.dot).setVisibility(View.GONE);
+        sizeRow.setOnClickListener(v -> {
+            int now = SHELF_DEFAULT;
+            for (int i = 0; i < SHELF_SCALES.length; i++) if (SHELF_SCALES[i] == shelfScale) now = i;
+            int next = (now + 1) % SHELF_SCALES.length;
+            shelfScale = SHELF_SCALES[next];
+            getSharedPreferences("launch", MODE_PRIVATE).edit().putInt("shelf_size", next).apply();
+            sizeName.setText(sizeNames[next]);
+            applyShelfScale();
+        });
+        rows.addView(sizeRow);
+        // What the shelf shows, whatever the size: OK steps Show all, Name only, Hide all.
+        View descRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+        ((ImageView) descRow.findViewById(R.id.icon)).setImageResource(R.drawable.ic_notes);
+        ((TextView) descRow.findViewById(R.id.title)).setText(R.string.shelf_place_info);
+        TextView descState = descRow.findViewById(R.id.status);
+        int[] modeNames = {R.string.shelf_show_all, R.string.shelf_name_only, R.string.shelf_hide_all};
+        descState.setText(modeNames[shelfMode]);
+        descRow.findViewById(R.id.dot).setVisibility(View.GONE);
+        descRow.setOnClickListener(v -> {
+            shelfMode = (shelfMode + 1) % modeNames.length;
+            getSharedPreferences("launch", MODE_PRIVATE).edit().putInt("shelf_mode", shelfMode).apply();
+            descState.setText(modeNames[shelfMode]);
+            applyShelfScale();
+        });
+        rows.addView(descRow);
         }
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         int width = Math.max(Math.max(btnWallpaper.getWidth(), (int) (150 * density)), panel.getMeasuredWidth());
