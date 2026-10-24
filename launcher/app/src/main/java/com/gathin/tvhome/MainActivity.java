@@ -315,6 +315,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroWhere = findViewById(R.id.heroWhere);
         // Now Playing sits at the top of the shelf: Down goes back to the dock, Up on to the top bar.
         nowPlaying = new NowPlaying(this, (LinearLayout) heroShelf, () -> focusTile(lastFocused % COLUMNS), this::focusTopBar);
+        // While music plays the card has the screen's attention: the ayat steps aside, and comes back after.
+        nowPlaying.setOnShownChanged(() -> showAyah(WeeklyAyah.last(this)));
         // A share of the space between the side paddings, so the description wraps into a column
         // rather than running the width of the screen. The name is one line, allowed a wider share.
         int usable = getResources().getDisplayMetrics().widthPixels - (int) ((55 + 56) * density);
@@ -1453,8 +1455,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void showAyah(WeeklyAyah.Ayah a) {
         if (ayahBlock == null) return;
-        // Hidden from the menu: the prayer times hang from the shelf's line, so they simply close up.
-        if (!WeeklyAyah.shown(this)) {
+        // Hidden from the menu, or making way for Now Playing: the prayer times hang from the shelf's
+        // line, so they simply close up.
+        if (!WeeklyAyah.shown(this) || (nowPlaying != null && nowPlaying.isShown())) {
             ayahBlock.setVisibility(View.GONE);
             return;
         }

@@ -29,7 +29,8 @@ Tested on a Sony BRAVIA VU3 (KD-65X75K), Google TV / Android TV 14, over Etherne
   Wikimedia Picture of the Day, Nature & Wildlife, NASA Image of the Day, Smithsonian Open Access art, and
   Unsplash (your own key, typed on the TV). It also lets you set how often the wallpaper changes, the text size and the place info.
 - **Now Playing**: while Spotify or another music app plays (and for 3 minutes after a pause), a small card above the place
-  name shows the song and cover with previous / play-pause / next; Up from the dock reaches it.
+  name shows the song and cover with previous / play-pause / next; Up from the dock reaches it. The ayat
+  of the day steps aside while it shows.
 - **Round top buttons** that expand with their name when selected.
 - **App menu** (hold OK on an app): Move, Update, tvOS-style or the app's own tile, Hide from Home,
   App info, Hidden apps.

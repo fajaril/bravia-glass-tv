@@ -42,6 +42,8 @@ final class NowPlaying {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ComponentName access;
     private final Runnable onDown, onUp;
+    /** Told when the card appears or goes, so Home can make room (the ayat steps aside for it). */
+    private Runnable onShownChanged;
     private final LinearLayout card;
     private final ImageView art, prev, play, next;
     private final TextView app, title, artist;
@@ -169,6 +171,16 @@ final class NowPlaying {
         follow(null);
     }
 
+    void setOnShownChanged(Runnable r) {
+        onShownChanged = r;
+    }
+
+    private void setShown(boolean on) {
+        if (on == isShown()) return;
+        card.setVisibility(on ? View.VISIBLE : View.GONE);
+        if (onShownChanged != null) onShownChanged.run();
+    }
+
     boolean isShown() {
         return card.getVisibility() == View.VISIBLE;
     }
@@ -292,7 +304,7 @@ final class NowPlaying {
         prev.setVisibility((actions & PlaybackState.ACTION_SKIP_TO_PREVIOUS) != 0 ? View.VISIBLE : View.GONE);
         next.setVisibility((actions & PlaybackState.ACTION_SKIP_TO_NEXT) != 0 ? View.VISIBLE : View.GONE);
         setArt(m);
-        card.setVisibility(View.VISIBLE);
+        setShown(true);
         // Paused: the card goes by itself when the three minutes are up.
         handler.removeCallbacks(expire);
         if (s != null && s.getState() == PlaybackState.STATE_PAUSED) {
@@ -319,7 +331,7 @@ final class NowPlaying {
     private void hide() {
         handler.removeCallbacks(expire);
         boolean hadFocus = card.hasFocus();
-        card.setVisibility(View.GONE);
+        setShown(false);
         art.setImageDrawable(null);
         if (hadFocus) onDown.run();
     }
