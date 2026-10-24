@@ -30,6 +30,23 @@ public class InputKeyService extends AccessibilityService {
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
+        // Which app is in front, for the azan: it stays quiet over Live TV and the HDMI inputs.
+        if (event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || event.getPackageName() == null) return;
+        String pkg = event.getPackageName().toString();
+        if (pkg.equals("com.android.systemui") || pkg.startsWith("com.google.android.inputmethod")) return;
+        front = pkg;
+    }
+
+    /** The app last brought to the front (as this service saw it); null before the first change. */
+    private static volatile String front;
+    /** Apps that show Live TV or an HDMI input on Android TV sets. */
+    private static final java.util.Set<String> LIVE_TV = new java.util.HashSet<>(java.util.Arrays.asList(
+            "com.android.tv", "com.google.android.tv", "com.mediatek.wwtv.tvcenter", "com.sony.dtv.tvx",
+            "com.sony.dtv.tvinput", "com.realtek.tv", "com.tcl.tv", "com.xiaomi.mitv.tvplayer"));
+
+    static boolean liveTvInFront() {
+        String f = front;
+        return f != null && LIVE_TV.contains(f);
     }
 
     @Override

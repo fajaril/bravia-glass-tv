@@ -813,6 +813,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         updateWifiLabel();
         updateInputsButton();
         updatePrayerTimes();
+        // The next azan's alarm, from today's times; the recording is fetched once, ahead of time.
+        Azan.schedule(this, prayerZone);
+        Azan.fetch(this);
         updateHomeWeather();
         nowPlaying.start();
         startWallpaperRotation();
@@ -1607,7 +1610,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             boolean ok = PrayerTimes.refresh(getApplicationContext(), zone);
             handler.post(() -> {
                 prayerRefreshRunning = false;
-                if (ok && !isDestroyed()) updatePrayerTimes();
+                if (ok && !isDestroyed()) {
+                    updatePrayerTimes();
+                    Azan.schedule(this, prayerZone);   // a new month's times: the alarm follows them
+                }
             });
         }, "prayer-times").start();
     }
@@ -2270,6 +2276,41 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         showMenu(panel, rows, btnWallpaper, width, false);
     }
 
+    /** Azan on or off for each prayer (Maghrib on at first), and a row that plays it now to try it. */
+    private void showAzanOptions() {
+        if (openMenu != null) return;
+        FrameLayout panel = (FrameLayout) getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
+        LinearLayout rows = panel.findViewById(R.id.rows);
+        for (int p : Azan.PRAYERS) {
+            View row = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+            ((ImageView) row.findViewById(R.id.icon)).setImageResource(R.drawable.ic_azan);
+            ((TextView) row.findViewById(R.id.title)).setText(PrayerTimes.NAMES[p]);
+            TextView state = row.findViewById(R.id.status);
+            state.setText(Azan.on(this, p) ? R.string.azan_on : R.string.azan_off);
+            row.findViewById(R.id.dot).setVisibility(View.GONE);
+            row.setOnClickListener(v -> {
+                boolean now = !Azan.on(this, p);
+                Azan.set(this, p, now);
+                state.setText(now ? R.string.azan_on : R.string.azan_off);
+                Azan.schedule(this, prayerZone);
+            });
+            rows.addView(row);
+        }
+        View test = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+        ((ImageView) test.findViewById(R.id.icon)).setImageResource(R.drawable.ic_np_play);
+        ((TextView) test.findViewById(R.id.title)).setText(R.string.azan_play_now);
+        ((TextView) test.findViewById(R.id.status)).setText("");
+        test.findViewById(R.id.dot).setVisibility(View.GONE);
+        test.setOnClickListener(v -> {
+            closeMenu(false);
+            startActivity(new Intent(this, AzanActivity.class).putExtra("prayer", 4));
+        });
+        rows.addView(test);
+        panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        int width = Math.max(Math.max(btnWallpaper.getWidth(), (int) (150 * density)), panel.getMeasuredWidth());
+        showMenu(panel, rows, btnWallpaper, width, false);
+    }
+
     /** Location, Text size, Place info and the ayat's options, opened from the Wallpaper menu. */
     private void showTextOptions() {
         if (openMenu != null) return;
@@ -2289,6 +2330,19 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             startActivity(new Intent(this, LocationActivity.class).putExtra("zone", zoneNow));
         });
         rows.addView(placeRow);
+        // The azan at prayer time: which prayers, and a test.
+        if (!prayerZone.isEmpty()) {
+            View azanRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+            ((ImageView) azanRow.findViewById(R.id.icon)).setImageResource(R.drawable.ic_azan);
+            ((TextView) azanRow.findViewById(R.id.title)).setText(R.string.azan);
+            ((TextView) azanRow.findViewById(R.id.status)).setText("\u203A");
+            azanRow.findViewById(R.id.dot).setVisibility(View.GONE);
+            azanRow.setOnClickListener(v -> {
+                closeMenu(false);
+                handler.post(this::showAzanOptions);
+            });
+            rows.addView(azanRow);
+        }
         // The size of the place's name, country and description: OK steps Small, Medium, Large.
         View sizeRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
         ((ImageView) sizeRow.findViewById(R.id.icon)).setImageResource(R.drawable.ic_text_size);

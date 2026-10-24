@@ -75,6 +75,10 @@
     <string name="shelf_medium">Medium</string>
     <string name="shelf_large">Large</string>
     <string name="location">Location</string>
+    <string name="azan">Azan</string>
+    <string name="azan_on">On</string>
+    <string name="azan_off">Off</string>
+    <string name="azan_play_now">Play the azan now</string>
     <string name="location_none">Not set</string>
     <string name="ayah_of_the_day">Ayat of the day</string>
     <string name="ayah_show">Show</string>

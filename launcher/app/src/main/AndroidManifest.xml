@@ -10,6 +10,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- The azan at prayer time: one exact alarm for the next prayer that is switched on. -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
     <!-- Needed on Android 10 to read the Wi-Fi network name; granted over adb at install time. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
@@ -113,6 +116,18 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/input_key_service" />
         </service>
+
+        <!-- The azan: the prayer-time alarm, and the full-screen azan it opens over other apps. -->
+        <receiver
+            android:name=".AzanReceiver"
+            android:exported="false" />
+        <activity
+            android:name=".AzanActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.TvHome" />
 
         <!-- Where the TV is: the JAKIM zone for Waktu Solat and the town for the weather. -->
         <activity

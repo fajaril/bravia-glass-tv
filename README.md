@@ -26,11 +26,16 @@ Tested on a Sony BRAVIA VU3 (KD-65X75K), Google TV / Android TV 14, over Etherne
 |---|---|
 | ![Home](showcase/02-after-glass-tv-home.jpg) | ![Weather and API](showcase/03-weather-and-API-under-the-clock.jpg) |
 | ![Now Playing](showcase/40-now-playing-on-home.jpg) | ![Location](showcase/43-location-screen.jpg) |
+| ![Azan](showcase/45-azan-maghrib.jpg) | ![Azan options](showcase/46-azan-options.jpg) |
 | ![Daily ayat](showcase/09-daily-ayat-malay.jpg) | ![Tiles](showcase/23-restyled-tiles-1.jpg) |
 
 - **Location, set on the TV**: Wallpaper → Location, text & ayat → **Location**. Pick the state, then the
   JAKIM zone (all 60, each with its main town and districts). Waktu Solat, the weather line and the Weather
   app follow it at once. A new TV with no zone in its theme opens this screen by itself on the first start.
+- **Azan at prayer time**: choose the prayers in Wallpaper → Location, text & ayat → **Azan** (Maghrib
+  is on at first). While the TV is on, a full-screen azan comes over the app in front: video apps pause,
+  music pauses and resumes after; Back stops it. It never plays in standby or over Live TV / HDMI.
+  The recording is the call to prayer at Masjid KLCC ([Internet Archive](https://archive.org/details/AzanZhurMasjidKlcc), CC0).
 - **Waktu Solat**: today's prayer times from JAKIM e-Solat for the chosen zone, with the next prayer
   highlighted and the Hijri date.
 - **Daily ayat**: one of 52 short verses a day above the prayer times, in Uthmani script with Malay
@@ -177,5 +182,7 @@ All the screenshots are in [`showcase/`](showcase), including three Apple-style 
   only adjusts them and adds the companion apps, all under the same MIT licence.
 - Adaptation and companion apps: **[fajaril](https://github.com/fajaril)**.
 - Fonts: Outfit and Amiri Quran, SIL Open Font License (licence files next to the fonts).
+- Azan recording: Masjid KLCC call to prayer, recorded by Bryce Fegley,
+  [Internet Archive](https://archive.org/details/AzanZhurMasjidKlcc), CC0 public domain.
 - Data: JAKIM e-Solat, Quran.com, Hisnul Muslim, Open-Meteo, Jabatan Alam Sekitar (APIMS), Bing,
   Wikimedia Commons, NASA, Smithsonian Open Access and Unsplash. Each is used under its own terms.
