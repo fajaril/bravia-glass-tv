@@ -31,6 +31,8 @@ final class Azan {
     private static final String SOURCE = "https://archive.org/download/AzanZhurMasjidKlcc/CallToPrayer.mp3";
     /** An alarm delivered this late (the TV was asleep) is let go rather than played out of time. */
     static final long LATE_MS = 2 * 60 * 1000L;
+    /** Where the azan itself begins in the KLCC recording (before it: birds and the park). */
+    static final int KLCC_START_MS = 12_000;
 
     private Azan() {
     }

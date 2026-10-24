@@ -95,6 +95,8 @@ public class AzanActivity extends Activity {
                 return true;
             });
             player.prepare();
+            // The KLCC recording opens with 12 seconds of birds and the park before the azan itself.
+            if (file.getName().equals("azan-klcc.mp3")) player.seekTo(Azan.KLCC_START_MS);
             player.start();
         } catch (Exception e) {
             finish();
