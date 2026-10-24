@@ -127,7 +127,7 @@
             android:excludeFromRecents="true"
             android:taskAffinity=""
             android:launchMode="singleTask"
-            android:theme="@style/Theme.TvHome" />
+            android:theme="@style/Theme.TvHome.AzanCard" />
 
         <!-- Where the TV is: the JAKIM zone for Waktu Solat and the town for the weather. -->
         <activity

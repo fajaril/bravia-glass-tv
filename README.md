@@ -33,7 +33,7 @@ Tested on a Sony BRAVIA VU3 (KD-65X75K), Google TV / Android TV 14, over Etherne
   JAKIM zone (all 60, each with its main town and districts). Waktu Solat, the weather line and the Weather
   app follow it at once. A new TV with no zone in its theme opens this screen by itself on the first start.
 - **Azan at prayer time**: choose the prayers in Wallpaper → Location, text & ayat → **Azan** (Maghrib
-  is on at first). While the TV is on, a full-screen azan comes over the app in front: video apps pause,
+  is on at first). While the TV is on, a floating glass card at the top comes over the app in front: video pauses,
   music pauses and resumes after; Back stops it. It never plays in standby or over Live TV / HDMI.
   The recording is the call to prayer at Masjid KLCC ([Internet Archive](https://archive.org/details/AzanZhurMasjidKlcc), CC0).
 - **Waktu Solat**: today's prayer times from JAKIM e-Solat for the chosen zone, with the next prayer

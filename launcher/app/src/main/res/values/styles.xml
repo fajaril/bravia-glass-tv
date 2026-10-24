@@ -10,6 +10,16 @@
         <item name="android:windowDisablePreview">true</item>
     </style>
 
+    <!-- The azan card: a small floating window over whatever is on, which stays visible behind it. -->
+    <style name="Theme.TvHome.AzanCard" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.Toast</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+
     <!-- Frosted pill, tvOS style. -->
     <style name="TopButtonBase">
         <item name="android:layout_width">wrap_content</item>
