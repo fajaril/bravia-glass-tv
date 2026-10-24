@@ -52,7 +52,8 @@ Tested on a Sony BRAVIA VU3 (KD-65X75K), Google TV / Android TV 14, over Etherne
 - **Round top buttons** that expand with their name when selected.
 - **One Home menu** (the first top button): **Widgets** › (Location, Azan, Ayat of the day, Ayat translation),
   then the wallpaper: **Wallpaper source** › (Bing, Wikimedia, Nature & Wildlife, NASA, Smithsonian,
-  Unsplash), **Change every**, **Caption** › (Text size, Place info) and **Unsplash key**.
+  Unsplash, and the Unsplash key), **Change every** and **Caption** › (Text size, Place info). Back in a
+  submenu returns to the menu above.
 - **App menu** (hold OK on an app): Move, Update, tvOS-style or the app's own tile, Hide from Home,
   App info, Hidden apps.
 - **Clear selection**: the selected app grows by 14% and lifts on a shadow, as on tvOS.
@@ -134,7 +135,7 @@ The full step-by-step guide (connecting, backing up, switching off the TV's extr
      empty and skip the Location screen: there are no prayer times, and the weather line uses
      `weather_lat`/`weather_lon`.
    - `unsplash_key`: leave it empty; an Unsplash key, if you have one, is typed on the TV
-     (Home → Unsplash key), never written here.
+     (Home → Wallpaper source → Unsplash key), never written here.
 3. **Your TV's example list** — `examples/` has tested lists of what to switch off for many TVs. Use the one
    for your model, or let the guide help you make one.
 

@@ -2232,14 +2232,27 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             });
             rows.addView(row);
         }
+        // The Unsplash key sits with the sources: typed here, on the TV, so no computer is needed.
+        addSeparator(rows);
+        View keyRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+        ((ImageView) keyRow.findViewById(R.id.icon)).setImageResource(R.drawable.ic_lock);
+        ((TextView) keyRow.findViewById(R.id.title)).setText(R.string.unsplash_key);
+        ((TextView) keyRow.findViewById(R.id.status)).setText(PlaceWallpapers.unsplashKey(this, config).isEmpty()
+                ? R.string.unsplash_key_not_set : R.string.unsplash_key_saved);
+        keyRow.findViewById(R.id.dot).setVisibility(View.GONE);
+        keyRow.setOnClickListener(v -> {
+            close.run();
+            showUnsplashKeyDialog();
+        });
+        rows.addView(keyRow);
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         int width = Math.max(Math.max(btnWallpaper.getWidth(), (int) (150 * density)), panel.getMeasuredWidth());
-        showMenu(panel, rows, btnWallpaper, width, false);
+        showSubmenu(panel, rows, width, this::showWallpaperSources);
     }
 
     /**
      * The Home menu (the first top button): Widgets (location, azan, ayat) one level down, then the
-     * wallpaper: where the pictures come from, how often they change, the caption, the Unsplash key.
+     * wallpaper: where the pictures come from (with the Unsplash key), how often they change, the caption.
      */
     private void showWallpaperSources() {
         if (openMenu != null) return;
@@ -2301,18 +2314,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             handler.post(() -> showTextOptions(false));
         });
         rows.addView(textRow);
-        // The key is typed here, on the TV, so no computer is needed to turn Unsplash on or change it.
-        View keyRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
-        ((ImageView) keyRow.findViewById(R.id.icon)).setImageResource(R.drawable.ic_lock);
-        ((TextView) keyRow.findViewById(R.id.title)).setText(R.string.unsplash_key);
-        ((TextView) keyRow.findViewById(R.id.status)).setText(PlaceWallpapers.unsplashKey(this, config).isEmpty()
-                ? R.string.unsplash_key_not_set : R.string.unsplash_key_saved);
-        keyRow.findViewById(R.id.dot).setVisibility(View.GONE);
-        keyRow.setOnClickListener(v -> {
-            close.run();
-            showUnsplashKeyDialog();
-        });
-        rows.addView(keyRow);
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         int width = Math.max(Math.max(btnWallpaper.getWidth(), (int) (150 * density)), panel.getMeasuredWidth());
         showMenu(panel, rows, btnWallpaper, width, false);
@@ -2350,7 +2351,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         rows.addView(test);
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         int width = Math.max(Math.max(btnWallpaper.getWidth(), (int) (150 * density)), panel.getMeasuredWidth());
-        showMenu(panel, rows, btnWallpaper, width, false);
+        showSubmenu(panel, rows, width, () -> showTextOptions(true));
     }
 
     /**
@@ -2464,7 +2465,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         int width = Math.max(Math.max(btnWallpaper.getWidth(), (int) (150 * density)), panel.getMeasuredWidth());
-        showMenu(panel, rows, btnWallpaper, width, false);
+        showSubmenu(panel, rows, width, this::showWallpaperSources);
     }
 
     private String speedLabel(long ms) {
@@ -2527,7 +2528,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      * itself, and the glass and rows fade in around it. Up from the first row (Down from the last when
      * the menu is above), or Back, closes it and the shape glides back to the anchor.
      */
+    /** What Back does in the open menu: in a submenu, reopen the menu it came from; null closes it. */
+    private Runnable menuBack;
+
+    /** Opens a submenu of {@code parent}: Back there returns to the parent menu instead of closing. */
+    private void showSubmenu(FrameLayout panel, LinearLayout rows, int width, Runnable parent) {
+        showMenu(panel, rows, btnWallpaper, width, false);
+        menuBack = parent;
+    }
+
     private void showMenu(FrameLayout panel, LinearLayout rows, View anchor, int width, boolean above) {
+        menuBack = null;
         GlassDrawable glass = new GlassDrawable(panel, 20 * density, density, glider, 0.5f, true);
         panel.setBackground(glass);
         Backdrop.watch(panel);
@@ -2578,7 +2589,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     case KeyEvent.KEYCODE_DPAD_RIGHT:
                         return true;
                     case KeyEvent.KEYCODE_BACK:
-                        if (down) closeMenu(true);
+                        if (down) {
+                            Runnable back = menuBack;
+                            if (back != null) {
+                                closeMenu(false);
+                                handler.post(back);
+                            } else {
+                                closeMenu(true);
+                            }
+                        }
                         return true;
                     default:
                         return false;
