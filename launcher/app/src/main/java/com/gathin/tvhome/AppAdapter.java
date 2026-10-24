@@ -93,7 +93,15 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         }
     }
 
-    static final float FOCUS_SCALE = 1.07f;
+    /**
+     * How much the selected app grows. At 1.07 it was too slight to tell which app was selected; tvOS
+     * grows it clearly and lifts it on a shadow ({@link #FOCUS_LIFT_DP}).
+     */
+    static final float FOCUS_SCALE = 1.14f;
+    /** The room each cell keeps around its tile: unchanged, so the tiles keep their size; the gap between them takes the larger zoom. */
+    private static final float SIZE_SCALE = 1.07f;
+    /** How high the selected app rises, in dp: the shadow under it. */
+    static final float FOCUS_LIFT_DP = 10f;
     /** Shared by every tile's zoom, so a focus move makes no new objects. */
     private static final DecelerateInterpolator ZOOM_REDUCED = new DecelerateInterpolator();
     private static final OvershootInterpolator ZOOM_IN = new OvershootInterpolator(1.6f);
@@ -109,7 +117,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         int design = Math.round(DESIGN_W_DP * density);
         if (innerWidthPx <= 0 || columns <= 0) return design;
         int cell = innerWidthPx / columns;
-        int fit = (int) ((cell - 12 * density) / FOCUS_SCALE);
+        int fit = (int) ((cell - 12 * density) / SIZE_SCALE);
         return Math.max(Math.round(80 * density), Math.min(design, fit));
     }
 
@@ -467,6 +475,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         h.name.setAlpha(focused ? 1f : 0f);
         h.card.setScaleX(focused ? FOCUS_SCALE : 1f);
         h.card.setScaleY(focused ? FOCUS_SCALE : 1f);
+        h.card.setTranslationZ(focused ? FOCUS_LIFT_DP * ctx.getResources().getDisplayMetrics().density : 0f);
         ViewGroup.MarginLayoutParams iconLp = (ViewGroup.MarginLayoutParams) h.icon.getLayoutParams();
         float density = ctx.getResources().getDisplayMetrics().density;
         if (e.kind != Entry.HOME_SETTINGS && tvosStyle(e.pkg)) {
@@ -783,14 +792,14 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 name.animate().cancel();
                 if (reducedMotion) {
                     // No overshoot: the extra frames redraw the banner and the dock band on a weak GPU.
-                    view.animate().scaleX(s).scaleY(s)
+                    view.animate().scaleX(s).scaleY(s).translationZ(focused ? FOCUS_LIFT_DP * density : 0f)
                             .setDuration(focused ? 120 : 80)
                             .setInterpolator(ZOOM_REDUCED)
                             .withLayer()
                             .start();
                     name.animate().alpha(focused ? 1f : 0f).setDuration(100).start();
                 } else {
-                    view.animate().scaleX(s).scaleY(s)
+                    view.animate().scaleX(s).scaleY(s).translationZ(focused ? FOCUS_LIFT_DP * density : 0f)
                             .setDuration(focused ? 260 : 180)
                             .setInterpolator(focused ? ZOOM_IN : ZOOM_OUT)
                             .withLayer()

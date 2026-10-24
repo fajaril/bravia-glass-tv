@@ -34,6 +34,7 @@ Tested on a Sony BRAVIA VU3 (KD-65X75K), Google TV / Android TV 14, over Etherne
 - **Round top buttons** that expand with their name when selected.
 - **App menu** (hold OK on an app): Move, Update, tvOS-style or the app's own tile, Hide from Home,
   App info, Hidden apps.
+- **Clear selection**: the selected app grows by 14% and lifts on a shadow, as on tvOS.
 - **tvOS-style tiles** for apps whose banners are plain: a gradient with the app's own icon, a wordmark
   or a vector symbol.
 - **Lighter on memory**: a smaller glass blur, icons loaded at the screen's density, no colour-emoji font,
