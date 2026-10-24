@@ -1,7 +1,9 @@
 # BRAVIA Glass TV
 
-An Apple TV–style home screen for a Sony BRAVIA (Google TV), set up for a home in Melaka, Malaysia, plus
-six small companion apps: Weather, Quran, Quotes, TV Status, Doa Harian and Al-Ma'thurat.
+An Apple TV–style home screen for a Sony BRAVIA (Google TV), plus six small companion apps: Weather, Quran,
+Quotes, TV Status, Doa Harian and Al-Ma'thurat.
+
+Adapted by **[fajaril](https://github.com/fajaril)**, built on Glass TV by cocombee and CleanYourTV by Gathin.
 
 > **Credit to the original developers.** This is a personal adaptation, not an original project. The
 > home-screen launcher, the setup and install scripts, the debloat lists and the safeguards that put a TV
@@ -171,6 +173,7 @@ All the screenshots are in [`showcase/`](showcase), including three Apple-style 
   **[CleanYourTV](https://github.com/Gathin23/cleanyourtv)** © 2026 Gathin, MIT ([LICENSE](LICENSE)), with
   contributions from about 70 others. The launcher, scripts, debloat lists and guides are theirs; this repo
   only adjusts them and adds the companion apps, all under the same MIT licence.
+- Adaptation and companion apps: **[fajaril](https://github.com/fajaril)**.
 - Fonts: Outfit and Amiri Quran, SIL Open Font License (licence files next to the fonts).
 - Data: JAKIM e-Solat, Quran.com, Hisnul Muslim, Open-Meteo, Jabatan Alam Sekitar (APIMS), Bing,
   Wikimedia Commons, NASA, Smithsonian Open Access and Unsplash. Each is used under its own terms.
