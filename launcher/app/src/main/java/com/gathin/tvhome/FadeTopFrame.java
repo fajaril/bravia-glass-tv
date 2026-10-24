@@ -14,16 +14,22 @@ import android.widget.FrameLayout;
  * The frame that clips the grid under the top bar. While rows are scrolled up to it, its top edge feathers
  * them out to transparent (the wallpaper shows through) instead of cutting them off. The offscreen layer
  * this needs is only used while the fade is on, so the resting home screen costs nothing extra.
+ * It clips at the top and bottom only: at the sides the dock's glass tray and an end tile grown by focus
+ * reach a little past the grid, and a clip there cut the tray's rounded ends off.
  */
 public class FadeTopFrame extends FrameLayout {
 
     private final Paint mask = new Paint();
     private final float length;
+    /** How far past its sides the grid may draw. */
+    private final float side;
     private float strength;   // 0 = off, 1 = full fade
 
     public FadeTopFrame(Context context, AttributeSet attrs) {
         super(context, attrs);
         length = 56 * getResources().getDisplayMetrics().density;
+        side = 40 * getResources().getDisplayMetrics().density;
+        setClipChildren(false);
         mask.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
         setWillNotDraw(false);
     }
@@ -43,16 +49,19 @@ public class FadeTopFrame extends FrameLayout {
     @Override
     protected void dispatchDraw(Canvas canvas) {
         if (strength <= 0f) {
+            int save = canvas.save();
+            canvas.clipRect(-side, 0, getWidth() + side, getHeight());
             super.dispatchDraw(canvas);
+            canvas.restoreToCount(save);
             return;
         }
-        int save = canvas.saveLayer(0, 0, getWidth(), length, null);
+        int save = canvas.saveLayer(-side, 0, getWidth() + side, length, null);
         super.dispatchDraw(canvas);
-        canvas.drawRect(0, 0, getWidth(), length, mask);
+        canvas.drawRect(-side, 0, getWidth() + side, length, mask);
         canvas.restoreToCount(save);
         // Below the fade band the children draw normally, outside the layer.
         save = canvas.save();
-        canvas.clipRect(0, length, getWidth(), getHeight());
+        canvas.clipRect(-side, length, getWidth() + side, getHeight());
         super.dispatchDraw(canvas);
         canvas.restoreToCount(save);
     }
