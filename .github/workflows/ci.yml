@@ -44,8 +44,11 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon testReleaseUnitTest assembleRelease
+      # Upstream keeps the launcher under 400 KB for 1 GB TVs. This adaptation carries more (the Amiri Quran
+      # font for the daily ayat alone is 137 KB, plus prayer times, weather, Now Playing and Location),
+      # so its limit is 500 KB: still small, and a sudden jump past it fails the check.
       - name: The launcher stays small
         run: |
           size=$(stat -c %s launcher/app/build/outputs/apk/release/app-release.apk)
           echo "release APK: $((size / 1024)) KB"
-          test "$size" -lt 409600 || { echo "APK is over 400 KB; the launcher targets 1 GB TVs, keep it small"; exit 1; }
+          test "$size" -lt 512000 || { echo "APK is over 500 KB; keep the launcher small"; exit 1; }
