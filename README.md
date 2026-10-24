@@ -75,30 +75,83 @@ Notes on the religious text:
   text with those phrases underneath, and turns off that zikir's (morning) recitation.
 - The closing doa rabitah is not included, because neither source has it.
 
-## Building
+## Try it on your own TV
 
-You need JDK 17 and the Android SDK (platform 34). Every app is signed with your debug key, because they are
-sideloaded, not published.
+This was built and tested on one TV, a Sony BRAVIA KD-65X75K (Google TV, Android 14). It should work on
+other **Android TV or Google TV sets and boxes with Android 8 or newer** (Sony, TCL, Xiaomi, Philips, many
+Hisense, Chromecast with Google TV and so on). It **cannot** run on Samsung (Tizen), LG (webOS), Hisense VIDAA,
+Roku or Apple TV. Check the TV's **Settings → About** first.
+
+Everything here can be undone, and no system app is deleted: the setup only switches apps off, and puts the
+TV's own home screen back if anything goes wrong.
+
+### What you need
+
+- A Mac or Linux computer on the same network as the TV (Windows works with the `.ps1` scripts).
+- **JDK 17** and the **Android SDK** (platform 34, build-tools 34.0.0), in a folder whose path has no spaces.
+- Python 3, for the small debugging client in `tools/`:
+  `python3 -m venv tools/venv && tools/venv/bin/pip install -r tools/requirements.txt`
+- On the TV: **Developer options → USB debugging** on (press OK seven times on Build in Settings → About
+  first). The first connection shows "Allow USB debugging?" on the TV: tick **Always allow**.
+
+The full step-by-step guide (connecting, backing up, switching off the TV's extras, installing) is in
+[GLASS-TV.md](GLASS-TV.md). [AGENTS.md](AGENTS.md) is the same guide written for an AI coding assistant
+(Claude Code and others): open this folder in one and ask it to set up Glass TV on your TV.
+
+### Make it yours before installing
+
+These are set for a home in Melaka; change them for yours.
+
+1. **Theme** — copy `themes/my-tv/` to a new folder and edit its `config.json`:
+   - `dock_apps`: the apps in the dock, then the grid rows, in order (package names; list yours with
+     `tools/tv.py 'pm list packages -3'`). Leave it short if you would rather arrange the apps on the TV.
+   - `hidden_apps`: apps to leave off Home.
+   - `prayer_zone`: your JAKIM e-Solat zone (for example `WLY01` Kuala Lumpur, `SGR01` Selangor, `JHR02`
+     Johor Bahru; the list is on [e-solat.gov.my](https://www.e-solat.gov.my)). Outside Malaysia, set it to
+     `""`: the prayer times and the ayat of the day are not shown.
+   - `weather_lat`, `weather_lon`: your location, for the weather line under the clock. The air-quality (API)
+     reading comes from the Malaysian Department of Environment and only shows within about 80 km of one of its stations.
+   - `unsplash_key`: leave it empty; an Unsplash key, if you have one, is typed on the TV
+     (Wallpaper → Unsplash key), never written here.
+2. **Weather app** — it opens on Melaka. To open on your state, change `HOME` in
+   `apps/weather-tv/app/src/main/java/com/glasstv/weather/MainActivity.java` to your state's place in the
+   `STATES` list (0 Johor, 1 Kedah … 13 Kuala Lumpur, 14 Labuan, 15 Putrajaya). The app is about Malaysia; elsewhere, skip it.
+3. **Your TV's example list** — `examples/` has tested lists of what to switch off for many TVs. Use the one
+   for your model, or let the guide help you make one.
+
+### Build and install
 
 ```bash
-export JAVA_HOME=/path/to/jdk-17 ANDROID_HOME=/path/to/android-sdk TV_HOST=192.168.1.x
+export JAVA_HOME=/path/to/jdk-17 ANDROID_HOME=/path/to/android-sdk TV_HOST=192.168.1.x   # your TV's address
 
-# The launcher (INPUT_KEY_SERVICE=1 turns the Input button service back on after a reinstall)
+# The home screen. It checks itself on the TV and puts the TV's own home screen back if anything fails.
 INPUT_KEY_SERVICE=1 launcher/build-and-install.sh
 
-# The theme for this TV
-tools/theme.sh themes/my-tv
+# Your theme
+tools/theme.sh themes/your-tv
 
-# A companion app
-cd apps/weather-tv && ./gradlew assembleRelease
+# Each companion app you want (weather-tv, quran-tv, quotes-tv, status-tv, doa-tv, mathurat-tv)
+(cd apps/quran-tv && ./gradlew assembleRelease)
+tools/venv/bin/python -I tools/b64push.py apps/quran-tv/app/build/outputs/apk/release/app-release.apk /data/local/tmp/app.apk
+tools/venv/bin/python -I tools/tv.py 'pm install -r /data/local/tmp/app.apk; rm /data/local/tmp/app.apk'
 ```
 
-Install a companion APK with `python tools/tv.py` (a small adb client in Python, see
-`tools/requirements.txt`) or with `adb install`. The first time a card is added, Glass TV asks on the TV
-whether to show it. You can also hold OK on Settings to manage the cards.
+(`adb install` works too, if you have Android's platform tools.) The first time an app with a card is
+installed, Glass TV asks on the TV whether to show it; hold OK on Settings to manage the cards later.
 
-To undo everything, see "Undo" in [GLASS-TV.md](GLASS-TV.md). In short, `tools/restore.sh` brings back the
-Google TV home screen.
+### One-time permissions on the TV
+
+- **Now Playing** (the music card on Home) needs Glass TV allowed to see what is playing. Run once:
+  `tools/tv.py 'cmd notification allow_listener com.gathin.tvhome/com.gathin.tvhome.MediaAccess'`.
+  It reads no notifications.
+- **TV Status → Apps**, **Restart TV** and Glass TV's **cache cleaning** use the TV's own debugging
+  service. The first time each one runs, the TV asks "Allow USB debugging?": tick **Always allow** and choose
+  **Allow**. They need USB debugging left on; with it off, they simply do nothing.
+
+### Undo
+
+`tools/restore.sh` brings the TV's own home screen back and switches everything on again; `tools/theme.sh
+--reset` removes the theme. Companion apps uninstall like any app. See "Undo" in [GLASS-TV.md](GLASS-TV.md).
 
 ## Showcase
 

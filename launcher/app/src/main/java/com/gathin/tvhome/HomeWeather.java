@@ -86,7 +86,9 @@ final class HomeWeather {
                     near = st;
                 }
             }
-            if (near != null) {
+            // Only a station near home (about 80 km): the network covers Malaysia, and outside it the
+            // nearest one would be far away and say nothing about the air here.
+            if (near != null && best < 0.5) {
                 int value = near.getInt("API"), band = 0;
                 while (band < API_TOP.length - 1 && value > API_TOP[band]) band++;
                 api = "API " + value + " " + API_NAME[band];
