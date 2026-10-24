@@ -1440,7 +1440,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** Fetches today's ayat when the one kept is from an earlier day. */
     private void updateAyah() {
-        if (ayahBlock == null || ayahRunning || WeeklyAyah.stored(this) != null) return;
+        if (ayahBlock == null || ayahRunning || !WeeklyAyah.shown(this) || WeeklyAyah.stored(this) != null) return;
         ayahRunning = true;
         new Thread(() -> {
             WeeklyAyah.Ayah a = WeeklyAyah.refresh(getApplicationContext());
@@ -1452,7 +1452,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private void showAyah(WeeklyAyah.Ayah a) {
-        if (ayahBlock == null || a == null || a.arabic.isEmpty()) return;
+        if (ayahBlock == null) return;
+        // Hidden from the menu: the prayer times hang from the shelf's line, so they simply close up.
+        if (!WeeklyAyah.shown(this)) {
+            ayahBlock.setVisibility(View.GONE);
+            return;
+        }
+        if (a == null || a.arabic.isEmpty()) return;
         ((TextView) findViewById(R.id.ayahLabel)).setText(a.reference);
         ((TextView) findViewById(R.id.ayahArabic)).setText(a.arabic);
         TextView tr = findViewById(R.id.ayahText);
@@ -2276,6 +2282,26 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             applyShelfScale();
         });
         rows.addView(descRow);
+        // The daily ayat itself: OK shows or hides it above the prayer times.
+        if (ayahBlock != null) {
+            View showRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+            ImageView eye = showRow.findViewById(R.id.icon);
+            ((TextView) showRow.findViewById(R.id.title)).setText(R.string.ayah_of_the_day);
+            TextView state = showRow.findViewById(R.id.status);
+            boolean on = WeeklyAyah.shown(this);
+            eye.setImageResource(on ? R.drawable.ic_visibility : R.drawable.ic_visibility_off);
+            state.setText(on ? R.string.ayah_show : R.string.ayah_hide);
+            showRow.findViewById(R.id.dot).setVisibility(View.GONE);
+            showRow.setOnClickListener(v -> {
+                boolean now = !WeeklyAyah.shown(this);
+                WeeklyAyah.setShown(this, now);
+                eye.setImageResource(now ? R.drawable.ic_visibility : R.drawable.ic_visibility_off);
+                state.setText(now ? R.string.ayah_show : R.string.ayah_hide);
+                showAyah(WeeklyAyah.last(this));
+                if (now) updateAyah();
+            });
+            rows.addView(showRow);
+        }
         // The daily ayat's translation: OK switches Malay and English, and the verse on screen follows.
         if (ayahBlock != null) {
             View langRow = getLayoutInflater().inflate(R.layout.item_input, rows, false);

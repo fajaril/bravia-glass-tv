@@ -62,6 +62,15 @@ final class WeeklyAyah {
         prefs(ctx).edit().putBoolean("show_english", on).apply();
     }
 
+    /** Whether the owner shows the ayat on Home (Wallpaper menu → Text & ayat); shown unless hidden there. */
+    static boolean shown(Context ctx) {
+        return !prefs(ctx).getBoolean("hidden", false);
+    }
+
+    static void setShown(Context ctx, boolean on) {
+        prefs(ctx).edit().putBoolean("hidden", !on).apply();
+    }
+
     private WeeklyAyah() {}
 
     /** Days since 1970 in Malaysian time: the verse changes at midnight. */

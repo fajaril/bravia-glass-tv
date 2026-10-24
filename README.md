@@ -22,7 +22,7 @@ Tested on a Sony BRAVIA VU3 (KD-65X75K), Google TV / Android TV 14, over Etherne
 - **Waktu Solat**: today's prayer times from JAKIM e-Solat (zone `MLK01`), with the next prayer
   highlighted and the Hijri date.
 - **Daily ayat**: one of 52 short verses a day above the prayer times, in Uthmani script with Malay
-  (Basmeih) or English (Saheeh International) from Quran.com.
+  (Basmeih) or English (Saheeh International) from Quran.com. It can be hidden from the Wallpaper menu → Text & ayat → Ayat of the day.
 - **Weather and air quality** under the clock: Open-Meteo weather and the official Malaysian API
   (Indeks Pencemar Udara) from the Department of Environment's APIMS feed. Select it to open the Weather app.
 - **Wallpapers**: Bing (a rolling 60-day pool from the US, UK, Canada, Australia and India editions),

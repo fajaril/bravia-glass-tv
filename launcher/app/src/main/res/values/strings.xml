@@ -74,6 +74,9 @@
     <string name="shelf_hide_all">Hide all</string>
     <string name="shelf_medium">Medium</string>
     <string name="shelf_large">Large</string>
+    <string name="ayah_of_the_day">Ayat of the day</string>
+    <string name="ayah_show">Show</string>
+    <string name="ayah_hide">Hidden</string>
     <string name="ayah_translation">Ayat translation</string>
     <string name="ayah_malay">Bahasa Melayu</string>
     <string name="ayah_english">English</string>
